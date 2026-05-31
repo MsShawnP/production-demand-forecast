@@ -1,0 +1,41 @@
+# fly.toml — production-demand-forecast (Cinderhaven S&OP demo)
+# Deploy: fly deploy
+# First-time setup:
+#   fly launch --no-deploy           # creates the app and this file
+#   fly secrets set DATABASE_URL=... FLASK_SECRET_KEY=... CACHE_DIR=/cache
+#   fly volumes create cache_vol --size 1 --region iad
+#   fly deploy
+
+app = "cinderhaven-demand-forecast"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "8050"
+  CACHE_DIR = "/cache"
+
+[http_service]
+  internal_port = 8050
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "10s"
+
+[[mounts]]
+  source = "cache_vol"
+  destination = "/cache"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[deploy]
+  strategy = "immediate"

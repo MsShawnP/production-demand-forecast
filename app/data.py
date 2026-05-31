@@ -344,7 +344,11 @@ def get_sop_summary(
         sop = compute_stockout_date(forecast, inventory_for_cap, schedule_for_cap)
 
         # Step 2: decision deadlines + flags
-        sop = compute_decision_deadline(sop, sku_config_adj)
+        # as_of_date anchors the demo to 2025-11-01; without it, today's date
+        # makes every deadline PAST_DUE (all stockout dates are in 2025/early 2026).
+        sop = compute_decision_deadline(
+            sop, sku_config_adj, as_of_date=pd.Timestamp(_DEMO_AS_OF_DATE)
+        )
 
         # Step 3: shared-line conflict detection
         sop = detect_shared_line_conflicts(sop, sku_config_adj)
