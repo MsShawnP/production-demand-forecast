@@ -19,11 +19,11 @@ Given current inventory, scheduled production, and true (OOS-corrected) projecte
 
 ## Stack
 
-- **UI:** Python + Dash + Plotly (Lailara Design System via constants.py + charts.py)
-- **Analytics:** `app/analytics/` package — OOS correction, rolling forecast (STL), capacity overlay
-- **Database:** Cinderhaven Data Platform — existing synthetic Postgres SSOT + new co-packer schema
-- **Deployment:** Fly.io
-- **Export:** Excel via openpyxl, PDF via WeasyPrint
+- **UI:** Python + Dash 3.x + Plotly + dash-ag-grid + dash-bootstrap-components (Lailara Design System via constants.py + charts.py)
+- **Analytics:** `app/analytics/` package — OOS correction, rolling forecast (STL via statsmodels), capacity overlay
+- **Database:** Cinderhaven Data Platform — existing synthetic Postgres SSOT + new co-packer schema (4 tables)
+- **Deployment:** Fly.io (python:3.13-slim, gunicorn 3 workers, 2GB memory)
+- **Export:** Excel via openpyxl, PDF via WeasyPrint + Jinja2
 
 ## Tasks
 
@@ -33,7 +33,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 **Phase 1 — Foundation**
 - [x] /clarify, /ce:brainstorm, /ce:plan — scope confirmed, requirements and plan written
 - [x] Cinderhaven Postgres schema confirmed (scan_data, distribution_log, product_master, promotions)
-- [ ] U1: App scaffold — copy db.py, data.py, constants.py, charts.py, run.py from competitive-shelf-intelligence
+- [x] U1: App scaffold — copy db.py, data.py, constants.py, charts.py, run.py from competitive-shelf-intelligence
 - [ ] U2: Co-packer schema — design + seed 4 tables in Cinderhaven Postgres SSOT
 
 **Phase 2 — Analytics Core**
