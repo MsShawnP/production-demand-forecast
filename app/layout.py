@@ -8,6 +8,7 @@ from __future__ import annotations
 from dash import dcc, html
 
 from app.constants import CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK, TEXT_SEC
+from app.tabs import sop_view
 
 
 def create_layout() -> html.Div:
@@ -48,23 +49,22 @@ def create_layout() -> html.Div:
                 },
             ),
 
-            # Tabs (populated as U7–U9 are built)
+            # Tabs
             dcc.Tabs(
                 id="main-tabs",
-                value="tab-placeholder",
+                value=sop_view.TAB_ID,
                 style={"borderBottom": f"1px solid {GREY_LIGHT}"},
                 colors={"border": GREY_LIGHT, "primary": CHICAGO, "background": CANVAS},
                 children=[
                     dcc.Tab(
-                        label="Loading…",
-                        value="tab-placeholder",
-                        children=html.Div(
-                            "App scaffold complete. Views coming in U7–U9.",
-                            style={"padding": "40px 32px", "color": TEXT_SEC},
-                        ),
+                        label="S&OP View",
+                        value=sop_view.TAB_ID,
+                        children=sop_view.layout(),
                         style=_tab_style(),
                         selected_style=_tab_selected_style(),
                     ),
+                    # U8: Scenario Controls — added when implemented
+                    # U9: Doom Loop — added when implemented
                 ],
             ),
         ],

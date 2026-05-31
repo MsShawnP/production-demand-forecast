@@ -43,7 +43,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 
 **Phase 3 — App Views**
 - [x] U6: Data query layer (`app/data.py` — wraps analytics, caches via Flask-Caching)
-- [ ] U7: S&OP view tab — per-SKU table, red flags, conflict indicators
+- [x] U7: S&OP view tab — per-SKU table, red flags, conflict indicators
 - [ ] U8: Scenario controls tab — promo lift, retailer doors, lead-time slip
 - [ ] U9: Doom loop narrative tab — hero case chart (Artisan Sauce Feb OOS)
 
