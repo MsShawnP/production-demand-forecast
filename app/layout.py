@@ -8,7 +8,7 @@ from __future__ import annotations
 from dash import dcc, html
 
 from app.constants import CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK, TEXT_SEC
-from app.tabs import sop_view
+from app.tabs import scenario_controls, sop_view
 
 
 def create_layout() -> html.Div:
@@ -63,7 +63,13 @@ def create_layout() -> html.Div:
                         style=_tab_style(),
                         selected_style=_tab_selected_style(),
                     ),
-                    # U8: Scenario Controls — added when implemented
+                    dcc.Tab(
+                        label="Scenario Controls",
+                        value=scenario_controls.TAB_ID,
+                        children=scenario_controls.layout(),
+                        style=_tab_style(),
+                        selected_style=_tab_selected_style(),
+                    ),
                     # U9: Doom Loop — added when implemented
                 ],
             ),
