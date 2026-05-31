@@ -1,0 +1,50 @@
+# Environment and secrets
+.env
+.env.*
+*.key
+credentials.*
+secrets.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# Node / JS (if frontend is added)
+node_modules/
+.next/
+dist/
+.env.local
+.env.production.local
+
+# Data files (keep synthetic data in repo; exclude any real brand data)
+data/real/
+data/confidential/
+*.csv.real
+*.xlsx.real
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Claude Code internal
+.claude-project-url
