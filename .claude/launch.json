@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demand-forecast",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "app.run"],
+      "port": 8050
+    }
+  ]
+}

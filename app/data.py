@@ -115,8 +115,12 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
     """
     from app.db import get_conn
     try:
-        where_clause = "WHERE s.sku = %(sku)s" if sku else ""
-        params = {"sku": sku} if sku else {}
+        if sku:
+            where_clause = "WHERE s.sku = %(sku)s AND s.week_ending <= %(as_of)s"
+            params: dict = {"sku": sku, "as_of": _DEMO_AS_OF_DATE}
+        else:
+            where_clause = "WHERE s.week_ending <= %(as_of)s"
+            params = {"as_of": _DEMO_AS_OF_DATE}
         with get_conn() as conn:
             return pd.read_sql(
                 f"""
@@ -150,7 +154,7 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
                 ORDER BY s.sku, s.store_id, s.week_ending
                 """,
                 conn,
-                params=params if params else None,
+                params=params,
             )
     except Exception:
         logger.exception("get_scan_data failed")

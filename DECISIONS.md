@@ -58,6 +58,16 @@ Each entry:
 - **Scope:** All functions in `app/analytics/` that compute "days until X" or compare a calculated date to the present.
 - **Do not:** Use `pd.Timestamp.today()` or `datetime.now()` directly inside analytics functions. Accept `as_of_date: pd.Timestamp | None = None` as a parameter and resolve to `today()` inside the function body.
 
+### 2026-05-31 — get_scan_data() always filters to <= _DEMO_AS_OF_DATE
+- **Why:** Unfiltered scan_data has 1.4M rows (3 years). Full query with correlated EXISTS on promotions takes 40+ seconds, silently times out, returns an empty DataFrame, and Flask-Caching stores that empty result for 1 hour — making the bug invisible.
+- **Scope:** `app/data.py` — `get_scan_data()` only. Other functions are unaffected.
+- **Do not:** Remove the `week_ending <= _DEMO_AS_OF_DATE` filter to "get all history." If more lookback is needed, change `_DEMO_AS_OF_DATE` or replace the EXISTS subquery with a CTE join first.
+
+### 2026-05-31 — Cinderhaven tables accessed via search_path, not schema prefix
+- **Why:** Cinderhaven data lives in the `raw` schema; co-packer tables land in `public`. Setting `search_path=raw,public` on the psycopg2 pool lets all SQL run without schema prefixes and keeps queries portable between dev (local proxy) and prod (Fly.io internal).
+- **Scope:** `app/db.py` pool options. All application SQL in this project.
+- **Do not:** Prefix table names with `raw.` in application SQL — let the search path resolve it. If a new table is added to `raw`, it is automatically visible without touching any queries.
+
 ---
 
 ## Visualization

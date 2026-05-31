@@ -59,3 +59,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** `python -m pytest tests/ -q` → commit U11 (`git add app/data.py app/tabs/sop_view.py app/templates/ PLAN.md`). Then U12: `Dockerfile` (python:3.13-slim, `libpango-1.0-0 libcairo2 libgdk-pixbuf2.0-0 libffi-dev`, gunicorn 3 workers, non-root appuser uid 1001) + `fly.toml` (iad, 2GB, min_machines=1, /health, /cache mount) + README update. Then `fly deploy`.
 
 ---
+
+## 2026-05-31 15:10 — First run session: app live with real Cinderhaven data
+
+**Started from:** U1–U10 committed, U11 uncommitted, U12 not started. No `.env`, app never run.
+
+**Did:** Got the app running end-to-end against live Cinderhaven Postgres. Fixed `db.py` search_path (`raw,public`), rewrote `seed_copack.py` with correct SKU format (`CHP-AS-001` etc.), fixed DDL runner semicolon-in-comment bug, filtered `get_scan_data()` to `<= 2025-11-01` to avoid 40s+ timeout, bumped statement_timeout to 90s, cleared stale Flask cache (C:/tmp not Git Bash /tmp).
+
+**State:** App renders live at http://127.0.0.1:8050. 50 SKUs loading, stockout grid populated. KPI shows 50/50/50 — inventory calibration needed. Scenario chip defaults to wrong value. `app/db.py`, `app/data.py`, `db/seed_copack.py`, `.claude/` uncommitted. U11 PDF export still uncommitted. U12 not started.
+
+**Next:** 1) Commit all changes. 2) Investigate 50/50/50 KPI — check `days_until_deadline` distribution, calibrate `sku_inventory` quantities against actual scan_data velocities. 3) Fix scenario chip default to "Base case". 4) U12: Dockerfile + fly.toml + `fly deploy`.
+
+---

@@ -40,7 +40,7 @@ def get_pool() -> psycopg2.pool.ThreadedConnectionPool:
             minconn=1,
             maxconn=10,
             dsn=url,
-            options="-c statement_timeout=30000",
+            options="-c statement_timeout=90000 -c search_path=raw,public",
             connect_timeout=5,
         )
         _pools[pid] = pool
