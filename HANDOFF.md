@@ -83,3 +83,16 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** Run `/ce:compound` to capture OOS correction, STL forecast, WeasyPrint Fly.io Dockerfile, and Dash scenario controls patterns as `docs/solutions/` entries. That closes the arc.
 
 ---
+
+## 2026-05-31 20:30 — /ce:compound complete, arc closed
+
+**Started from:** Arc complete, app live on Fly.io. `/ce:compound` was the one remaining step.
+
+**Did:** Full compound run (session history enabled). Documented two deployment-arc bugs:
+`docs/solutions/build-errors/weasyprint-dockerfile-debian-trixie-deps-2026-05-31.md` (gdk-pixbuf renamed in Debian Trixie, missing libpangocairo) and `docs/solutions/logic-errors/kpi-as-of-date-demo-data-past-due-2026-05-31.md` (as_of_date defaulting to today against 2025 data). Updated CLAUDE.md to surface `docs/solutions/` to future agents. Committed `93cf68a`.
+
+**State:** Arc fully closed. App live, all 12 units shipped, 54 tests passing, two solution docs committed. No open tasks.
+
+**Next:** New arc. Options: (a) portfolio landing page for this tool, (b) `/improve` pass on the app code, (c) start next project in the backlog.
+
+---
