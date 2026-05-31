@@ -38,7 +38,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 
 **Phase 2 — Analytics Core**
 - [x] U3: OOS correction module (`app/analytics/oos_correction.py`)
-- [ ] U4: Rolling forecast module (`app/analytics/forecast.py`)
+- [x] U4: Rolling forecast module (`app/analytics/forecast.py`)
 - [ ] U5: Capacity overlay + decision deadline (`app/analytics/capacity.py`)
 
 **Phase 3 — App Views**
