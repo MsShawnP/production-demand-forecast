@@ -37,7 +37,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 - [x] U2: Co-packer schema — design + seed 4 tables in Cinderhaven Postgres SSOT
 
 **Phase 2 — Analytics Core**
-- [ ] U3: OOS correction module (`app/analytics/oos_correction.py`)
+- [x] U3: OOS correction module (`app/analytics/oos_correction.py`)
 - [ ] U4: Rolling forecast module (`app/analytics/forecast.py`)
 - [ ] U5: Capacity overlay + decision deadline (`app/analytics/capacity.py`)
 
