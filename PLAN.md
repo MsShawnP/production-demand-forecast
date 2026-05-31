@@ -34,7 +34,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 - [x] /clarify, /ce:brainstorm, /ce:plan — scope confirmed, requirements and plan written
 - [x] Cinderhaven Postgres schema confirmed (scan_data, distribution_log, product_master, promotions)
 - [x] U1: App scaffold — copy db.py, data.py, constants.py, charts.py, run.py from competitive-shelf-intelligence
-- [ ] U2: Co-packer schema — design + seed 4 tables in Cinderhaven Postgres SSOT
+- [x] U2: Co-packer schema — design + seed 4 tables in Cinderhaven Postgres SSOT
 
 **Phase 2 — Analytics Core**
 - [ ] U3: OOS correction module (`app/analytics/oos_correction.py`)
