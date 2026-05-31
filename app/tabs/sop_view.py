@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, dcc, html, no_update
+from dash import Input, Output, State, dcc, html, no_update
+
+import base64
 
 import dash_ag_grid as dag
 
@@ -99,19 +101,18 @@ def layout() -> html.Div:
             className="ag-theme-alpine",
         ),
 
-        # Export buttons (wired in U10 — stubs)
+        # Export buttons
         html.Div([
             html.Button(
                 "Download MPS Workbook (.xlsx)",
                 id="sop-export-xlsx-btn",
                 style=_btn_style(),
-                disabled=True,
             ),
             html.Button(
                 "Download Decision Brief (.pdf)",
                 id="sop-export-pdf-btn",
                 style={**_btn_style(), "marginLeft": "8px", "backgroundColor": TEXT_SEC},
-                disabled=True,
+                disabled=True,  # wired in U11
             ),
             dcc.Download(id="sop-download-xlsx"),
             dcc.Download(id="sop-download-pdf"),
@@ -187,6 +188,25 @@ def register_callbacks(app) -> None:
             chip_text = "Scenario: Baseline"
 
         return row_data, kpi_row, chip_text
+
+    @app.callback(
+        Output("sop-download-xlsx", "data"),
+        Input("sop-export-xlsx-btn", "n_clicks"),
+        State("scenario-params", "data"),
+        prevent_initial_call=True,
+    )
+    def download_xlsx(n_clicks, scenario_data):
+        from app.data import export_sop_excel, get_sop_summary
+        scenario = scenario_data or {}
+        sop = get_sop_summary(
+            promo_lift_pct=float(scenario.get("promo_lift_pct", 0.0)),
+            new_doors=int(scenario.get("new_doors", 0)),
+            lead_time_slip_weeks=int(scenario.get("lead_time_slip_weeks", 0)),
+        )
+        if sop.empty:
+            return no_update
+        xlsx_bytes = export_sop_excel(sop, scenario_params=scenario)
+        return dcc.send_bytes(xlsx_bytes, "production_decision_brief.xlsx")
 
     @app.callback(
         Output("sop-detail-panel", "children"),

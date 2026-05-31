@@ -48,7 +48,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 - [x] U9: Doom loop narrative tab — hero case chart (Artisan Sauce Feb OOS)
 
 **Phase 4 — Export + Deployment**
-- [ ] U10: Excel export (.xlsx via openpyxl)
+- [x] U10: Excel export (.xlsx via openpyxl)
 - [ ] U11: PDF export (WeasyPrint, Jinja2 template)
 - [ ] U12: Fly.io deployment (Dockerfile, fly.toml)
 
