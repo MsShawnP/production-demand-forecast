@@ -1,7 +1,7 @@
 ---
 title: "feat: Build Production Demand Forecast App"
 type: feat
-status: active
+status: completed
 date: 2026-05-31
 origin: docs/brainstorms/2026-05-31-production-demand-forecast-requirements.md
 ---

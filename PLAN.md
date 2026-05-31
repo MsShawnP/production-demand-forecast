@@ -62,13 +62,13 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 
 ## Definition of done for this arc
 
-- [ ] App deployed and live on Fly.io
-- [ ] Cinderhaven Artisan Sauce SKU shows the February OOS event — true demand corrects above observed velocity
-- [ ] Per-SKU S&OP view renders with stockout date and decision deadline
-- [ ] At least one SKU flags red (decision deadline < 14 days)
-- [ ] Scenario controls update deadlines in real time without page reload
-- [ ] Export downloads a usable decision brief
-- [ ] Doom loop narrative is present and legible to a non-data-science reader
+- [x] App deployed and live on Fly.io (https://cinderhaven-demand-forecast.fly.dev/)
+- [x] Cinderhaven Artisan Sauce SKU shows the February OOS event — true demand corrects above observed velocity
+- [x] Per-SKU S&OP view renders with stockout date and decision deadline
+- [x] At least one SKU flags red (decision deadline < 14 days)
+- [x] Scenario controls update deadlines in real time without page reload
+- [x] Export downloads a usable decision brief
+- [x] Doom loop narrative is present and legible to a non-data-science reader
 
 ---
 
