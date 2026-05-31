@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production Decision Brief</title>
+<style>
+  /* Lailara Design System v2 — inline CSS for WeasyPrint isolation.
+     External stylesheets are not reliably available in the WeasyPrint context.
+     Using system font fallbacks since Playfair Display / Source Sans 3 require
+     self-hosted woff2 files which are not available in the PDF context. */
+  :root {
+    --canvas:      #f5f3ee;
+    --ink:         #0d0d0d;
+    --text:        #333333;
+    --text-sec:    #595959;
+    --grey-light:  #d9d9d9;
+    --chicago:     #1f2e7a;
+    --teal:        #158f75;
+    --sg-orange:   #ee8a2a;
+    --tokyo-rose:  #b82d4a;
+    --surface-fail: #fde8e7;
+    --surface-warn: #fdeee0;
+    --surface-pass: #e4f5f0;
+  }
+
+  @page {
+    size: letter;
+    margin: 0.6in;
+    @bottom-left   { content: "Lailara LLC · Production Demand Forecast"; font-size: 9pt; color: var(--text-sec); font-family: Arial, Helvetica, sans-serif; }
+    @bottom-right  { content: "Page " counter(page) " of " counter(pages); font-size: 9pt; color: var(--text-sec); font-family: Arial, Helvetica, sans-serif; }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: var(--text); background: #ffffff; }
+
+  /* Header */
+  .header { border-bottom: 2px solid var(--chicago); padding-bottom: 12pt; margin-bottom: 20pt; }
+  .header h1 { font-family: Georgia, serif; font-size: 22pt; font-weight: 700; color: var(--ink); }
+  .header .subtitle { font-size: 10pt; color: var(--text-sec); margin-top: 4pt; }
+
+  /* Section titles */
+  h2 { font-family: Georgia, serif; font-size: 16pt; font-weight: 700; color: var(--ink); margin: 20pt 0 10pt; }
+
+  /* Decision table */
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 16pt; }
+  thead tr { background: var(--chicago); color: #ffffff; }
+  thead th { padding: 6pt 8pt; text-align: left; font-weight: 700; }
+  tbody tr:nth-child(even) { background: #f9f9f9; }
+  tbody td { padding: 5pt 8pt; vertical-align: top; border-bottom: 1px solid var(--grey-light); }
+  tr.past-due, tr.critical { background: var(--surface-fail) !important; }
+  tr.warning { background: var(--surface-warn) !important; }
+  tr.ok { background: var(--surface-pass) !important; }
+  .conflict-badge { color: var(--tokyo-rose); font-weight: 700; }
+
+  /* Narrative */
+  .narrative { max-width: 100%; margin-bottom: 16pt; }
+  .narrative p { line-height: 1.6; margin-bottom: 10pt; font-size: 11pt; color: var(--text); }
+  .narrative .pull-quote { border-left: 3pt solid var(--teal); padding-left: 12pt; font-style: italic; }
+
+  /* Hero case SVG */
+  .hero-chart { width: 100%; margin: 12pt 0; }
+  .hero-chart svg { max-width: 100%; height: auto; }
+  .chart-placeholder { background: #f0f0f0; padding: 20pt; text-align: center; color: var(--text-sec); border-radius: 2pt; }
+
+  /* KPI row */
+  .kpi-row { display: flex; gap: 16pt; margin-bottom: 20pt; }
+  .kpi-box { flex: 1; border: 1px solid var(--grey-light); padding: 10pt 14pt; border-radius: 2pt; }
+  .kpi-box .value { font-size: 24pt; font-weight: 700; color: var(--chicago); }
+  .kpi-box .label { font-size: 9pt; color: var(--text-sec); margin-top: 2pt; }
+
+  /* Footer note */
+  .footnote { font-size: 9pt; color: var(--text-sec); font-style: italic; margin-top: 16pt;
+              border-top: 1px solid var(--grey-light); padding-top: 8pt; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>Production Decision Brief</h1>
+  <div class="subtitle">
+    Cinderhaven Provisions LLC &mdash; Generated {{ generated_at }} &mdash; {{ scenario_label }}
+  </div>
+</div>
+
+<!-- KPI summary -->
+<div class="kpi-row">
+  <div class="kpi-box">
+    <div class="value">{{ total_skus }}</div>
+    <div class="label">Total SKUs</div>
+  </div>
+  <div class="kpi-box">
+    <div class="value">{{ need_action }}</div>
+    <div class="label">Need Action (&le; 28 days)</div>
+  </div>
+  <div class="kpi-box">
+    <div class="value">{{ critical_conflicts }}</div>
+    <div class="label">Critical Conflicts</div>
+  </div>
+</div>
+
+<!-- Decision table -->
+<h2>Per-SKU Decision Summary</h2>
+<table>
+  <thead>
+    <tr>
+      <th>SKU</th>
+      <th>Product</th>
+      <th>Line</th>
+      <th>Fcst/wk</th>
+      <th>Stockout</th>
+      <th>Decision By</th>
+      <th>Days Left</th>
+      <th>Flag</th>
+      <th>Conflict</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in sop_rows %}
+    <tr class="{{ row.css_class }}">
+      <td>{{ row.sku }}</td>
+      <td>{{ row.product_name }}</td>
+      <td>{{ row.product_line }}</td>
+      <td>{{ row.weekly_forecast_mean }}</td>
+      <td>{{ row.stockout_label }}</td>
+      <td>{{ row.deadline_label }}</td>
+      <td>{{ row.days_left }}</td>
+      <td>{{ row.deadline_flag }}</td>
+      <td>{% if row.shared_line_conflict %}<span class="conflict-badge">&#9888; Shared Line</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Doom loop narrative -->
+<h2>The Demand Correction</h2>
+<div class="narrative">
+  <p>Specialty food brands that depend on co-packers plan production reactively.
+     When a stockout happens, the weeks of zero sales suppress the trailing velocity average.
+     The suppressed average becomes the next forecast, which produces a smaller reorder,
+     which shortens the buffer, which makes the next stockout more likely.</p>
+  <p>The fix is correcting the data before forecasting. Out-of-stock weeks carry no demand
+     signal &mdash; they carry silence. Replacing that silence with a rolling-median baseline
+     adjusted for seasonality breaks the loop.</p>
+  <p class="pull-quote">The corrected demand estimate raises the replenishment signal and
+     produces an earlier decision deadline. Without correction, the brand plans to the
+     suppressed number and repeats the cycle.</p>
+</div>
+
+<!-- Hero case chart (SVG if available, placeholder if not) -->
+{% if hero_svg %}
+<div class="hero-chart">{{ hero_svg }}</div>
+{% else %}
+<div class="chart-placeholder">
+  Hero case chart not available in this export.
+  View the interactive Doom Loop tab for the full chart.
+</div>
+{% endif %}
+
+<!-- Footnote -->
+<div class="footnote">
+  Data is synthetic &mdash; Cinderhaven Provisions LLC (demo). Generated by Lailara LLC
+  Production Demand Forecast. Not for commercial use.
+</div>
+
+</body>
+</html>

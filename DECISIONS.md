@@ -53,6 +53,13 @@ Each entry:
 
 ---
 
+### 2026-05-31 — Analytics functions that compare against "today" accept an as_of_date parameter
+- **Why:** Tests that hardcode fixture dates break silently when the real date advances past them. Discovered when `compute_decision_deadline()` used `pd.Timestamp.today()` directly — all deadline-flag tests failed because fixture dates (2025-11-01) were in the past by the test run date (2026-05-31).
+- **Scope:** All functions in `app/analytics/` that compute "days until X" or compare a calculated date to the present.
+- **Do not:** Use `pd.Timestamp.today()` or `datetime.now()` directly inside analytics functions. Accept `as_of_date: pd.Timestamp | None = None` as a parameter and resolve to `today()` inside the function body.
+
+---
+
 ## Visualization
 
 [Chart conventions, palette decisions, interactivity choices]

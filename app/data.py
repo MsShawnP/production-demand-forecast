@@ -467,6 +467,115 @@ def export_sop_excel(
     return buf.getvalue()
 
 
+def export_sop_pdf(
+    sop_df: pd.DataFrame,
+    scenario_params: dict | None = None,
+    hero_fig=None,
+) -> bytes:
+    """Render the S&OP decision brief as a PDF via WeasyPrint + Jinja2.
+
+    Returns raw PDF bytes.
+
+    WeasyPrint requires native system libraries (pango, cairo, gdk-pixbuf).
+    On Linux (Fly.io), these are installed in the Dockerfile.
+    On Windows, this will raise ImportError — catch at the call site.
+
+    hero_fig: optional Plotly go.Figure for the doom loop hero case.
+    If kaleido is not installed, the SVG section is omitted gracefully.
+    """
+    import pathlib
+    from datetime import datetime
+
+    try:
+        import weasyprint
+        from jinja2 import Environment, FileSystemLoader
+    except ImportError as e:
+        raise ImportError(
+            f"PDF export requires WeasyPrint and Jinja2 system libraries: {e}. "
+            "This is only supported in the Fly.io container (not on Windows)."
+        ) from e
+
+    scenario = scenario_params or {}
+    promo = scenario.get("promo_lift_pct", 0.0)
+    doors = scenario.get("new_doors", 0)
+    slip  = scenario.get("lead_time_slip_weeks", 0)
+
+    parts = []
+    if promo:
+        parts.append(f"+{int(promo*100)}% promo lift")
+    if doors:
+        parts.append(f"{doors:,} new doors")
+    if slip:
+        parts.append(f"+{slip}wk lead-time slip")
+    scenario_label = f"Scenario: {', '.join(parts)}" if parts else "Baseline"
+
+    # KPI summary
+    total_skus       = len(sop_df)
+    need_action      = int(sop_df["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
+    critical_conf    = int(
+        sop_df[sop_df["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
+    ) if "shared_line_conflict" in sop_df.columns else 0
+
+    # Build table rows for template
+    sop_rows = []
+    for _, row in sop_df.iterrows():
+        flag = str(row.get("deadline_flag", "OK"))
+        css_class = {
+            "PAST_DUE": "past-due",
+            "CRITICAL": "critical",
+            "WARNING":  "warning",
+            "OK":       "ok",
+        }.get(flag, "ok")
+        stockout = row.get("stockout_date")
+        deadline = row.get("decision_deadline")
+        days = row.get("days_until_deadline")
+        sop_rows.append({
+            "sku":               row.get("sku", ""),
+            "product_name":      row.get("product_name", ""),
+            "product_line":      row.get("product_line", ""),
+            "weekly_forecast_mean": f"{row.get('weekly_forecast_mean', 0):.0f}",
+            "stockout_label":    _fmt_date_pdf(stockout),
+            "deadline_label":    _fmt_date_pdf(deadline),
+            "days_left":         str(int(days)) if days is not None and pd.notna(days) else "—",
+            "deadline_flag":     flag,
+            "shared_line_conflict": bool(row.get("shared_line_conflict", False)),
+            "css_class":         css_class,
+        })
+
+    # Optional: hero SVG from Plotly figure
+    hero_svg = None
+    if hero_fig is not None:
+        try:
+            hero_svg = hero_fig.to_image(format="svg").decode("utf-8")
+        except Exception:
+            logger.warning("export_sop_pdf: kaleido not available, skipping hero SVG")
+
+    # Render Jinja2 template
+    template_dir = pathlib.Path(__file__).parent / "templates"
+    env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=True)
+    tmpl = env.get_template("export_pdf.html")
+    html_str = tmpl.render(
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        scenario_label=scenario_label,
+        total_skus=total_skus,
+        need_action=need_action,
+        critical_conflicts=critical_conf,
+        sop_rows=sop_rows,
+        hero_svg=hero_svg,
+    )
+
+    return weasyprint.HTML(string=html_str).write_pdf()
+
+
+def _fmt_date_pdf(d) -> str:
+    try:
+        if d is None or (isinstance(d, float) and pd.isna(d)):
+            return "—"
+        return pd.Timestamp(d).strftime("%-d %b %Y")
+    except Exception:
+        return str(d)[:10] if d else "—"
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

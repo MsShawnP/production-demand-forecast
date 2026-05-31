@@ -47,3 +47,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** New session → `/ce:work docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`. Start U1 (app scaffold from competitive-shelf-intelligence) + U2 (co-packer schema). Fix PLAN.md stack field in U1.
 
 ---
+
+## 2026-05-31 — U1–U10 complete, U11 partial, U12 pending
+
+**Started from:** Full planning artifacts in place, zero code written. Plan at `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`.
+
+**Did:** Ran `/ce:work` — executed U1 through U10 in sequence. Built the full analytics pipeline (OOS correction → STL forecast → capacity overlay), data query layer with Flask-Caching, three Dash tabs (S&OP view, scenario controls, doom loop narrative), and Excel export. 54 tests written and passing. U11 (PDF export) code written but not committed — interrupted at max context.
+
+**State:** U1–U10 committed. U11 has uncommitted changes in `app/data.py`, `app/tabs/sop_view.py`, and `app/templates/export_pdf.html`. U12 (Dockerfile, fly.toml) not started. PDF export only works on Linux (WeasyPrint requires GTK system libs — non-functional on Windows). Inventory seed numbers for CHP-0001/CHP-0023 need calibration once actual scan_data velocities are known.
+
+**Next:** `python -m pytest tests/ -q` → commit U11 (`git add app/data.py app/tabs/sop_view.py app/templates/ PLAN.md`). Then U12: `Dockerfile` (python:3.13-slim, `libpango-1.0-0 libcairo2 libgdk-pixbuf2.0-0 libffi-dev`, gunicorn 3 workers, non-root appuser uid 1001) + `fly.toml` (iad, 2GB, min_machines=1, /health, /cache mount) + README update. Then `fly deploy`.
+
+---

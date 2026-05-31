@@ -112,7 +112,6 @@ def layout() -> html.Div:
                 "Download Decision Brief (.pdf)",
                 id="sop-export-pdf-btn",
                 style={**_btn_style(), "marginLeft": "8px", "backgroundColor": TEXT_SEC},
-                disabled=True,  # wired in U11
             ),
             dcc.Download(id="sop-download-xlsx"),
             dcc.Download(id="sop-download-pdf"),
@@ -207,6 +206,30 @@ def register_callbacks(app) -> None:
             return no_update
         xlsx_bytes = export_sop_excel(sop, scenario_params=scenario)
         return dcc.send_bytes(xlsx_bytes, "production_decision_brief.xlsx")
+
+    @app.callback(
+        Output("sop-download-pdf", "data"),
+        Input("sop-export-pdf-btn", "n_clicks"),
+        State("scenario-params", "data"),
+        prevent_initial_call=True,
+    )
+    def download_pdf(n_clicks, scenario_data):
+        from app.data import export_sop_pdf, get_sop_summary
+        scenario = scenario_data or {}
+        sop = get_sop_summary(
+            promo_lift_pct=float(scenario.get("promo_lift_pct", 0.0)),
+            new_doors=int(scenario.get("new_doors", 0)),
+            lead_time_slip_weeks=int(scenario.get("lead_time_slip_weeks", 0)),
+        )
+        if sop.empty:
+            return no_update
+        try:
+            pdf_bytes = export_sop_pdf(sop, scenario_params=scenario)
+            return dcc.send_bytes(pdf_bytes, "production_decision_brief.pdf")
+        except ImportError:
+            # WeasyPrint not available in this environment (Windows dev, not Fly.io)
+            logger.warning("PDF export unavailable: WeasyPrint native libs not installed")
+            return no_update
 
     @app.callback(
         Output("sop-detail-panel", "children"),

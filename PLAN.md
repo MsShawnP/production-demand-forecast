@@ -49,7 +49,7 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 
 **Phase 4 — Export + Deployment**
 - [x] U10: Excel export (.xlsx via openpyxl)
-- [ ] U11: PDF export (WeasyPrint, Jinja2 template)
+- [x] U11: PDF export (WeasyPrint, Jinja2 template)
 - [ ] U12: Fly.io deployment (Dockerfile, fly.toml)
 
 ## Out of scope for this arc
