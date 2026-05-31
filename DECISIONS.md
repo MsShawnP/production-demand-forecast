@@ -93,6 +93,13 @@ Each entry:
 
 ---
 
+### 2026-05-31 — Connecting a new Fly.io app to an existing Fly.io Postgres database
+- **Why:** `fly secrets import < .env` imports the local proxy URL (127.0.0.1:15433) — it works for local dev through `fly proxy` but resolves to localhost inside Fly.io containers. `fly postgres attach` creates a new empty database instead of pointing to the existing one. The correct pattern: attach to get a valid internal URL format, then `fly secrets set DATABASE_URL=...` with the existing database name substituted.
+- **Scope:** Any future Fly.io deployment that reuses the Cinderhaven Postgres cluster (`cinderhaven-db`).
+- **Do not:** Import `DATABASE_URL` from `.env` directly into Fly.io secrets — it will always be a proxy URL and will crash the container on startup.
+
+---
+
 ## Reversed / Superseded
 
 When a decision is overturned:

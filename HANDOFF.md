@@ -71,3 +71,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** 1) Commit all changes. 2) Investigate 50/50/50 KPI — check `days_until_deadline` distribution, calibrate `sku_inventory` quantities against actual scan_data velocities. 3) Fix scenario chip default to "Base case". 4) U12: Dockerfile + fly.toml + `fly deploy`.
 
 ---
+
+## 2026-05-31 19:30 — U12 complete, app deployed
+
+**Started from:** U1–U11 committed, U12 not started. KPI showing 50/50/50 (as_of_date bug). App live locally only.
+
+**Did:** Fixed KPI bug (compute_decision_deadline not receiving as_of_date — defaulted to today, all deadlines PAST_DUE). Created Dockerfile, fly.toml, .dockerignore, updated README. Deployed to Fly.io — two Dockerfile fixes needed (libgdk-pixbuf renamed in Debian Trixie; missing libpangocairo). Fixed DATABASE_URL: fly secrets import brought in a local proxy URL; fly postgres attach created an empty DB; manually redirected to existing cinderhaven DB. WeasyPrint confirmed working in container. All 12 units complete, arc marked completed.
+
+**State:** App live at https://cinderhaven-demand-forecast.fly.dev/ — health check passing, 50 SKUs loading, 54 tests passing. All definition-of-done items checked. Plan status: completed. GitHub up to date.
+
+**Next:** Run `/ce:compound` to capture OOS correction, STL forecast, WeasyPrint Fly.io Dockerfile, and Dash scenario controls patterns as `docs/solutions/` entries. That closes the arc.
+
+---

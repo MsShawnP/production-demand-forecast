@@ -94,3 +94,45 @@ shouldn't re-attempt dead ends because the lesson got lost.
 **Status:** Resolved — but 26s query is still slow. Consider pre-warming cache at startup or replacing EXISTS with a CTE join for a future pass.
 
 **Tags:** performance, timeout, flask-caching, scan_data, silent-failure, psycopg2
+
+---
+
+### 2026-05-31 — Dockerfile: libgdk-pixbuf2.0-0 renamed in Debian Trixie
+
+**Attempted:** Specified `libgdk-pixbuf2.0-0` in the apt-get install list, following the WeasyPrint docs and prior Dockerfile patterns.
+
+**Why it didn't work:** `python:3.13-slim` is now based on Debian Trixie (not Bookworm). The package `libgdk-pixbuf2.0-0` was replaced by `libgdk-pixbuf-xlib-2.0-0` in Trixie. First deploy failed with `E: Package 'libgdk-pixbuf2.0-0' has no installation candidate`.
+
+**What we tried instead:** Replaced with `libgdk-pixbuf-xlib-2.0-0`. Also discovered `libpangocairo-1.0-0` was missing (WeasyPrint needs it for the pangocairo shared library) — added that in the next deploy.
+
+**Status:** Resolved
+
+**Tags:** dockerfile, debian, trixie, weasyprint, system-packages, deploy
+
+---
+
+### 2026-05-31 — fly secrets import < .env imports local proxy DATABASE_URL
+
+**Attempted:** Staged Fly.io secrets by running `fly secrets import < .env` to quickly copy all local env vars.
+
+**Why it didn't work:** The local `.env` DATABASE_URL was a `fly proxy` format: `postgresql://user:pass@127.0.0.1:15433/cinderhaven`. This works for local dev through the proxy tunnel but resolves to localhost inside the Fly.io container — connection refused on startup.
+
+**What we tried instead:** Unset DATABASE_URL with `fly secrets unset DATABASE_URL`, then ran `fly postgres attach` to get the correct internal URL (`postgres://...@cinderhaven-db.flycast:5432/...`). Then manually updated the database name in the URL to point to the existing `cinderhaven` database.
+
+**Status:** Resolved
+
+**Tags:** fly-io, deploy, database-url, secrets, postgres, proxy
+
+---
+
+### 2026-05-31 — fly postgres attach creates a new empty database, not the existing one
+
+**Attempted:** Used `fly postgres attach cinderhaven-db --app cinderhaven-demand-forecast` expecting it to connect the app to the existing `cinderhaven` database.
+
+**Why it didn't work:** `fly postgres attach` creates a new database named after the app (`cinderhaven_demand_forecast`) and a new user with the same name, then sets `DATABASE_URL` to point to that new empty database — not the existing `cinderhaven` one containing all Cinderhaven data.
+
+**What we tried instead:** Used `fly postgres db list` to identify the correct existing database name (`cinderhaven`). Then ran `fly secrets set DATABASE_URL="postgres://cinderhaven_demand_forecast:...@cinderhaven-db.flycast:5432/cinderhaven?sslmode=disable"` — keeping the auto-created user credentials but changing the database name. The new user happened to have USAGE on the `raw` schema automatically, so no additional grants were needed.
+
+**Status:** Resolved
+
+**Tags:** fly-io, deploy, postgres, fly-postgres-attach, existing-database
