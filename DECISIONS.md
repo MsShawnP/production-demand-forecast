@@ -19,6 +19,11 @@ Each entry:
 
 ## Architecture & Pipeline
 
+### 2026-05-31 — Separate analytics logic from the Dash data layer
+- **Why:** Pure analytics functions (OOS correction, forecasting, capacity math) belong in `app/analytics/` with no Dash or cache dependency, callable and testable in isolation. `app/data.py` is the caching/query layer that wraps analytics output for Dash callbacks.
+- **Scope:** This project and all future Dash analytics projects in the portfolio.
+- **Do not:** Put analytical computation inside `app/data.py` functions — mixing query I/O with analytics logic makes the analytics untestable without mocking Postgres.
+
 ### 2026-05-31 — Keep forecasting method pragmatic (seasonal time-series only)
 - **Why:** The analytical differentiator is the OOS correction and the demand-vs-capacity gap logic, not forecast-algorithm sophistication. A complex model trained on zero-sale stockout windows just learns to predict zero. The OOS correction must happen before any model training.
 - **Scope:** Global — all forecasting logic in this project
@@ -41,7 +46,10 @@ Each entry:
 
 ## Data & Schema
 
-[Decisions about data sources, schemas, transformations]
+### 2026-05-31 — Exclude aggregate channels from OOS correction
+- **Why:** UNFI-AGG, KEHE-AGG, and DTC-AGG have intentional 4–6 week bulk-order cycles in the Cinderhaven synthetic data. Rolling-median OOS correction misclassifies these gaps as stockouts, corrupting `true_demand` for distributor channels. Their velocity is reported but not corrected.
+- **Scope:** `app/analytics/oos_correction.py` — `detect_oos_periods()` sets `is_oos = False` for all rows where `store_id` ends in `-AGG`.
+- **Do not:** Apply OOS correction to aggregate channels, even if they show zero-sale weeks.
 
 ---
 
@@ -53,7 +61,10 @@ Each entry:
 
 ## Output Formats
 
-[Decisions about deliverable formats, structure, organization]
+### 2026-05-31 — Use WeasyPrint for PDF export
+- **Why:** WeasyPrint converts HTML/CSS to PDF, so the Lailara Design System CSS reuses directly — no rebuilding the layout from scratch. ReportLab requires programmatic layout construction. Headless Chromium adds excessive Docker image weight.
+- **Scope:** PDF export in this project (`app/templates/export_pdf.html` + WeasyPrint render path).
+- **Do not:** Use ReportLab or headless Chromium for this export. WeasyPrint requires system packages (pango, cairo, gdk-pixbuf) in the Dockerfile — install them, don't skip.
 
 ---
 

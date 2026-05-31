@@ -19,27 +19,38 @@ Given current inventory, scheduled production, and true (OOS-corrected) projecte
 
 ## Stack
 
-- **Backend:** Python (FastAPI) — queries Cinderhaven Postgres, runs OOS correction + forecast + capacity logic
-- **Frontend:** HTML/JS + Lailara Design System (SVG charts, Economist style)
-- **Database:** Cinderhaven Data Platform — existing synthetic Postgres SSOT
+- **UI:** Python + Dash + Plotly (Lailara Design System via constants.py + charts.py)
+- **Analytics:** `app/analytics/` package — OOS correction, rolling forecast (STL), capacity overlay
+- **Database:** Cinderhaven Data Platform — existing synthetic Postgres SSOT + new co-packer schema
 - **Deployment:** Fly.io
+- **Export:** Excel via openpyxl, PDF via WeasyPrint
 
 ## Tasks
 
 Work in vertical slices — one piece end-to-end before moving to the next.
+Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 
-- [x] /clarify — scope confirmed
-- [ ] Explore Cinderhaven Postgres schema — confirm available tables (velocity/POS, inventory, production bookings)
-- [ ] OOS correction module — rolling-median baseline (pre/post-stockout), outputs `true_demand` per SKU per week
-- [ ] Rolling forecast module — 12-week forward demand by SKU, built on `true_demand`
-- [ ] Capacity overlay — join forecast to co-packer lead times, min run sizes; compute `stockout_date` and `decision_deadline`
-- [ ] Shared-line conflict detection — flag SKUs with overlapping deadlines on the same line
-- [ ] FastAPI backend — expose forecast + capacity data as JSON endpoints
-- [ ] S&OP view (frontend) — per-SKU forward view: true demand, inventory, scheduled production, stockout date, decision deadline; red flag when deadline < 14 days
-- [ ] Scenario controls (frontend) — promo lift %, retailer door count, lead-time slip; update deadlines in real time
-- [ ] Export — downloadable production decision brief (format: TBD during build, likely Excel or PDF)
-- [ ] Fly.io deployment — Dockerfile, fly.toml, Postgres connection via env var
-- [ ] Doom loop narrative — copy and annotations that explain the OOS correction as the circuit breaker
+**Phase 1 — Foundation**
+- [x] /clarify, /ce:brainstorm, /ce:plan — scope confirmed, requirements and plan written
+- [x] Cinderhaven Postgres schema confirmed (scan_data, distribution_log, product_master, promotions)
+- [ ] U1: App scaffold — copy db.py, data.py, constants.py, charts.py, run.py from competitive-shelf-intelligence
+- [ ] U2: Co-packer schema — design + seed 4 tables in Cinderhaven Postgres SSOT
+
+**Phase 2 — Analytics Core**
+- [ ] U3: OOS correction module (`app/analytics/oos_correction.py`)
+- [ ] U4: Rolling forecast module (`app/analytics/forecast.py`)
+- [ ] U5: Capacity overlay + decision deadline (`app/analytics/capacity.py`)
+
+**Phase 3 — App Views**
+- [ ] U6: Data query layer (`app/data.py` — wraps analytics, caches via Flask-Caching)
+- [ ] U7: S&OP view tab — per-SKU table, red flags, conflict indicators
+- [ ] U8: Scenario controls tab — promo lift, retailer doors, lead-time slip
+- [ ] U9: Doom loop narrative tab — hero case chart (Artisan Sauce Feb OOS)
+
+**Phase 4 — Export + Deployment**
+- [ ] U10: Excel export (.xlsx via openpyxl)
+- [ ] U11: PDF export (WeasyPrint, Jinja2 template)
+- [ ] U12: Fly.io deployment (Dockerfile, fly.toml)
 
 ## Out of scope for this arc
 
