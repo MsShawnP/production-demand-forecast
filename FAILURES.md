@@ -125,6 +125,20 @@ shouldn't re-attempt dead ends because the lesson got lost.
 
 ---
 
+### 2026-06-01 — pip audit not available as a shell command on Windows
+
+**Attempted:** Ran `pip audit -r requirements.txt` directly in Git Bash to check for CVEs.
+
+**Why it didn't work:** `pip audit` is not a standalone command when pip-audit is installed on Windows — it installs as a Python module but the shell entry point is either not on PATH or not created. Running `pip audit` returns `unknown command "audit"`. Running `pip-audit` returns `command not found`.
+
+**What we tried instead:** `python -m pip_audit -r requirements.txt` — invoking as a Python module works correctly and found CVE-2025-68616 in WeasyPrint 61.2.
+
+**Status:** Resolved
+
+**Tags:** windows, pip-audit, dependency-audit, path, cvs
+
+---
+
 ### 2026-05-31 — fly postgres attach creates a new empty database, not the existing one
 
 **Attempted:** Used `fly postgres attach cinderhaven-db --app cinderhaven-demand-forecast` expecting it to connect the app to the existing `cinderhaven` database.

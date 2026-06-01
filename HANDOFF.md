@@ -96,3 +96,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** New arc. Options: (a) portfolio landing page for this tool, (b) `/improve` pass on the app code, (c) start next project in the backlog.
 
 ---
+
+## 2026-06-01 — /improve post-launch audit complete, all findings fixed and deployed
+
+**Started from:** Arc closed, v1.0 tagged, /ce:compound done. /improve was the final step.
+
+**Did:** Full audit with security + correctness reviewers. Fixed 16 findings (3 critical, 8 important, 5 nice-to-have). Key fixes: logger NameError in sop_view.py, new-doors scenario guard, promo weeks excluded from OOS rolling median, detail panel now uses active scenario, inventory clamping bug, CSP header, f-string WHERE clause, WeasyPrint CVE-2025-68616 (upgraded to 68.1). Deployed to Fly.io.
+
+**State:** App live at https://cinderhaven-demand-forecast.fly.dev/ with all fixes deployed. 54 tests passing. No known CVEs. Next /improve review due 2026-07-01.
+
+**Next:** New arc — portfolio landing page, next project in backlog, or additional features (multi-SKU conflict resolution, demand sensing).
+
+---

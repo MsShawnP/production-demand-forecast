@@ -46,6 +46,13 @@ Each entry:
 
 ## Data & Schema
 
+### 2026-06-01 — OOS rolling-median neighbor selection excludes promo weeks
+- **Why:** Including promo-inflated weeks in the rolling median overstates the correction estimate for OOS periods adjacent to promotions. The seasonal index is already computed on non-promo weeks; the rolling-median baseline should match so the two components are consistent.
+- **Scope:** `app/analytics/oos_correction.py` — `_correct_group()` neighbor pool selection.
+- **Do not:** Re-include promo weeks in `neighbor_pool` even if it simplifies the code. Fall back to all non-OOS weeks only when every non-OOS week is a promo week (no other non-promo reference exists for that SKU/store pair).
+
+---
+
 ### 2026-05-31 — Exclude aggregate channels from OOS correction
 - **Why:** UNFI-AGG, KEHE-AGG, and DTC-AGG have intentional 4–6 week bulk-order cycles in the Cinderhaven synthetic data. Rolling-median OOS correction misclassifies these gaps as stockouts, corrupting `true_demand` for distributor channels. Their velocity is reported but not corrected.
 - **Scope:** `app/analytics/oos_correction.py` — `detect_oos_periods()` sets `is_oos = False` for all rows where `store_id` ends in `-AGG`.
