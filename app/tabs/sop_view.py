@@ -12,9 +12,13 @@ Layout:
 
 from __future__ import annotations
 
+import logging
+
 import pandas as pd
 import plotly.graph_objects as go
 from dash import Input, Output, State, dcc, html, no_update
+
+logger = logging.getLogger(__name__)
 
 import base64
 
@@ -234,22 +238,30 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("sop-detail-panel", "children"),
         Input("sop-grid", "selectedRows"),
+        State("scenario-params", "data"),
     )
-    def update_detail_panel(selected_rows):
+    def update_detail_panel(selected_rows, scenario_data):
         if not selected_rows:
             return html.Div()
         row = selected_rows[0]
-        return _build_detail_panel(row)
+        scenario = scenario_data or {}
+        return _build_detail_panel(row, scenario)
 
 
-def _build_detail_panel(row: dict) -> html.Div:
-    """Inventory runway chart for a selected SKU row."""
+def _build_detail_panel(row: dict, scenario: dict) -> html.Div:
+    """Inventory runway chart for a selected SKU row.
+
+    Uses the active scenario params so the runway chart matches the table.
+    """
     from app.data import get_forecast, get_sku_inventory, get_production_schedule
 
     sku = row.get("sku", "")
     product_name = row.get("product_name", sku)
 
-    forecast = get_forecast()
+    forecast = get_forecast(
+        promo_lift_pct=float(scenario.get("promo_lift_pct", 0.0)),
+        new_doors=int(scenario.get("new_doors", 0)),
+    )
     inventory = get_sku_inventory()
     schedule = get_production_schedule()
 
@@ -283,7 +295,8 @@ def _build_detail_panel(row: dict) -> html.Div:
     for wk, demand in zip(weeks, demands):
         current += sched_map.get(wk, 0)
         current -= demand
-        running_inv.append(max(0, current))
+        current = max(0.0, current)   # clamp the running total, not just the display value
+        running_inv.append(current)
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -343,7 +356,9 @@ def _build_detail_panel(row: dict) -> html.Div:
 
 def _format_date(d) -> str:
     try:
-        return pd.Timestamp(d).strftime("Wk %b %-d")
+        ts = pd.Timestamp(d)
+        # %-d is Linux-only (no-leading-zero). Use ts.day for cross-platform safety.
+        return ts.strftime("Wk %b ") + str(ts.day)
     except Exception:
         return str(d)[:10] if d else "—"
 

@@ -20,6 +20,7 @@ COPY . .
 
 # Non-root user for least-privilege execution
 RUN mkdir -p /cache && \
+    chmod 700 /cache && \
     useradd -r -u 1001 -s /bin/false appuser && \
     chown -R appuser /app /cache
 

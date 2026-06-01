@@ -83,3 +83,26 @@ Full plan: `docs/plans/2026-05-31-001-feat-production-demand-forecast-plan.md`
 ## Improvement history
 
 <!-- Entries are added by /improve — don't delete this section -->
+
+### 2026-06-01 — Improvement pass
+- **Trigger:** User-initiated, just after v1.0 launch
+- **What was reviewed:** Security (ce-security-sentinel), correctness (ce-correctness-reviewer), workflow files, code quality, tests, dependencies, documentation, git hygiene
+- **What was fixed:**
+  - CRITICAL: `logger` NameError in `sop_view.py` — crashed PDF export callback on Windows
+  - CRITICAL: New-doors scenario added demand to `insufficient_data` SKUs (missing guard, same as promo-lift guard)
+  - CRITICAL: OOS rolling median included promo weeks in neighbor selection, inflating corrections near promotions
+  - IMPORTANT: Detail panel called `get_forecast()` with no scenario params — runway chart diverged from table during active scenarios
+  - IMPORTANT: Running inventory clamped display but not `current` variable — post-stockout production arrivals silently absorbed into deficit
+  - IMPORTANT: `%-d` strftime format fails on Windows — Stockout/Decision By columns showed raw ISO dates in dev
+  - IMPORTANT: `hero_svg` template slot lacked `| safe` — SVG was entity-encoded; documented trust boundary in comment
+  - IMPORTANT: `get_scan_data` used f-string interpolation for WHERE clause — refactored to two static SQL strings
+  - IMPORTANT: CSP header missing from `run.py` security middleware
+  - IMPORTANT: CLAUDE.md Stack section had stale "TBD" placeholders from scaffold
+  - IMPORTANT: `src/CLAUDE.md` with wrong guidance deleted (code lives in `app/`, not `src/`)
+  - NICE TO HAVE: `/cache` directory mode set to 700 in Dockerfile
+  - NICE TO HAVE: `FLASK_SECRET_KEY` missing now logs a warning instead of silently using per-process random
+  - NICE TO HAVE: O(n²) OOS correction loop — pre-compute position lookups and neighbor_positions once outside the OOS loop
+  - NICE TO HAVE: WeasyPrint CVE-2025-68616 — upgraded pin from `>=61.0,<62.0` to `>=68.0,<69.0`
+  - NICE TO HAVE: `portfolio_project_brief_...md` moved from root to `docs/`
+- **Deferred:** Stockout off-by-one interpretation (domain question — stockout week vs. last in-stock week), all-promo-neighbor edge case in OOS correction (rare, added fallback to all non-OOS)
+- **Next review:** 2026-07-01

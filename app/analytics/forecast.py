@@ -66,13 +66,15 @@ def build_rolling_forecast(
         for sku, sku_series in weekly.groupby("sku", sort=False):
             sku_series = sku_series.sort_values("week_ending").copy()
             projected = _forecast_one_sku(sku, sku_series, cutoff, n_weeks)
-            # Scenario: promo lift
+            # Scenario: promo lift — skip SKUs with no usable demand history
             if promo_lift_pct > 0 and "insufficient_data" not in projected["forecast_method"].values:
                 projected.loc[projected["is_projected"], "forecast_units"] *= (1 + promo_lift_pct)
-            # Scenario: new doors
+            # Scenario: new doors — same guard; door contribution is meaningless
+            # when a SKU has no observed velocity to derive per-door rate from
             if new_retailer_doors > 0 and new_doors_velocity_factor is not None:
-                door_contribution = new_retailer_doors * float(new_doors_velocity_factor)
-                projected.loc[projected["is_projected"], "forecast_units"] += door_contribution
+                if "insufficient_data" not in projected["forecast_method"].values:
+                    door_contribution = new_retailer_doors * float(new_doors_velocity_factor)
+                    projected.loc[projected["is_projected"], "forecast_units"] += door_contribution
             # Clip to >= 0
             projected["forecast_units"] = projected["forecast_units"].clip(lower=0)
             parts.append(projected)

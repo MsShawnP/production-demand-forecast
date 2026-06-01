@@ -22,10 +22,10 @@ production run can be ordered to prevent it?
 
 ## Stack and tools
 
-- Primary language: TBD
-- Key packages/libraries: TBD
-- Database: Cinderhaven Data Platform (synthetic data)
-- Entry point: TBD
+- Primary language: Python 3.13
+- Key packages/libraries: Dash 3.x, Plotly, dash-ag-grid, pandas, statsmodels (STL), Flask-Caching, psycopg2, openpyxl, WeasyPrint, Jinja2
+- Database: Cinderhaven Data Platform (synthetic Postgres SSOT, `raw` schema)
+- Entry point: `app/run.py` (gunicorn `app.run:server`)
 
 ## Project files
 

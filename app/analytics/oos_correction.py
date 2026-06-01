@@ -172,14 +172,24 @@ def _correct_group(
         group["insufficient_data"] = True
         return group
 
-    # For each OOS row, find 3 closest non-OOS weeks before and after
+    # For neighbor selection, exclude promo weeks to avoid inflating the rolling
+    # median with promo-elevated sales. Fall back to all non-OOS weeks only when
+    # every non-OOS week is a promo week (rare; ensures we always have neighbors).
+    promo_mask = group.get("is_promo", pd.Series(False, index=group.index)).astype(bool)
+    non_oos_non_promo_idx = group.index[~oos_mask & ~promo_mask].tolist()
+    neighbor_pool = non_oos_non_promo_idx if non_oos_non_promo_idx else non_oos_idx
+
+    # Pre-compute position lookups once (O(n)) rather than inside the OOS loop (O(n²)).
+    # neighbor_positions is invariant across OOS rows — compute it once outside the loop.
     positions = list(group.index)
+    pos_of = {idx: i for i, idx in enumerate(positions)}
+    neighbor_positions = [pos_of[i] for i in neighbor_pool]
+
+    # For each OOS row, find 3 closest non-OOS, non-promo weeks before and after
     for idx in group.index[oos_mask]:
-        pos = positions.index(idx)
-        # Non-OOS positions
-        non_oos_positions = [positions.index(i) for i in non_oos_idx]
-        before = [positions[p] for p in non_oos_positions if p < pos]
-        after  = [positions[p] for p in non_oos_positions if p > pos]
+        pos = pos_of[idx]
+        before = [positions[p] for p in neighbor_positions if p < pos]
+        after  = [positions[p] for p in neighbor_positions if p > pos]
 
         before_vals = group.loc[before[-3:], "units_sold"].tolist() if before else []
         after_vals  = group.loc[after[:3],  "units_sold"].tolist() if after else []

@@ -149,8 +149,12 @@
 </div>
 
 <!-- Hero case chart (SVG if available, placeholder if not) -->
+<!-- TRUST BOUNDARY: hero_svg must only ever come from Plotly's to_image(format="svg")
+     via the internal analytics pipeline — never from user input. The | safe filter
+     is required to render SVG as markup; it is safe here because the source is
+     controlled. Do not route any user-supplied value through this slot. -->
 {% if hero_svg %}
-<div class="hero-chart">{{ hero_svg }}</div>
+<div class="hero-chart">{{ hero_svg | safe }}</div>
 {% else %}
 <div class="chart-placeholder">
   Hero case chart not available in this export.

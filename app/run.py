@@ -6,9 +6,12 @@ Matches competitive-shelf-intelligence/app/run.py pattern exactly.
 
 from __future__ import annotations
 
+import logging
 import os
 import pathlib
 import secrets as _secrets
+
+logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 
@@ -28,7 +31,15 @@ app = Dash(
     suppress_callback_exceptions=True,
 )
 server = app.server
-server.secret_key = os.environ.get("FLASK_SECRET_KEY") or _secrets.token_hex(32)
+_secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not _secret_key:
+    logger.warning(
+        "FLASK_SECRET_KEY not set — using a per-process random key. "
+        "Sessions will not survive worker restarts and will differ across "
+        "Gunicorn workers. Set FLASK_SECRET_KEY in .env or fly secrets."
+    )
+    _secret_key = _secrets.token_hex(32)
+server.secret_key = _secret_key
 init_cache(server)
 
 app.layout = create_layout()
@@ -40,6 +51,15 @@ def _add_security_headers(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Dash loads Bootstrap CSS and Plotly JS inline; unsafe-inline is required.
+    # Tighten script-src if Dash ever supports nonces.
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self';"
+    )
     return response
 
 

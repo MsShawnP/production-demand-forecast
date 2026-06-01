@@ -114,48 +114,75 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
     Row count should match product_master × authorized stores × weeks of history.
     """
     from app.db import get_conn
+    # Two static SQL strings — no f-string interpolation — so structural parts
+    # are never user-influenced even if the call signature changes in the future.
+    _SQL_ALL = """
+        SELECT
+            s.sku,
+            s.store_id,
+            s.week_ending,
+            s.units_sold,
+            s.dollars_sold,
+            CASE
+                WHEN d.sku IS NOT NULL
+                     AND d.authorized_date  <= s.week_ending
+                     AND (d.deauthorized_date IS NULL
+                          OR d.deauthorized_date > s.week_ending)
+                THEN TRUE
+                ELSE FALSE
+            END                                             AS is_authorized,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM promotions p
+                    WHERE p.sku = s.sku
+                      AND s.week_ending BETWEEN p.start_week AND p.end_week
+                ) THEN TRUE
+                ELSE FALSE
+            END                                             AS is_promo
+        FROM scan_data s
+        LEFT JOIN distribution_log d
+            ON d.sku = s.sku AND d.store_id = s.store_id
+        WHERE s.week_ending <= %(as_of)s
+        ORDER BY s.sku, s.store_id, s.week_ending
+    """
+    _SQL_SKU = """
+        SELECT
+            s.sku,
+            s.store_id,
+            s.week_ending,
+            s.units_sold,
+            s.dollars_sold,
+            CASE
+                WHEN d.sku IS NOT NULL
+                     AND d.authorized_date  <= s.week_ending
+                     AND (d.deauthorized_date IS NULL
+                          OR d.deauthorized_date > s.week_ending)
+                THEN TRUE
+                ELSE FALSE
+            END                                             AS is_authorized,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM promotions p
+                    WHERE p.sku = s.sku
+                      AND s.week_ending BETWEEN p.start_week AND p.end_week
+                ) THEN TRUE
+                ELSE FALSE
+            END                                             AS is_promo
+        FROM scan_data s
+        LEFT JOIN distribution_log d
+            ON d.sku = s.sku AND d.store_id = s.store_id
+        WHERE s.sku = %(sku)s AND s.week_ending <= %(as_of)s
+        ORDER BY s.sku, s.store_id, s.week_ending
+    """
     try:
         if sku:
-            where_clause = "WHERE s.sku = %(sku)s AND s.week_ending <= %(as_of)s"
-            params: dict = {"sku": sku, "as_of": _DEMO_AS_OF_DATE}
+            sql, params = _SQL_SKU, {"sku": sku, "as_of": _DEMO_AS_OF_DATE}
         else:
-            where_clause = "WHERE s.week_ending <= %(as_of)s"
-            params = {"as_of": _DEMO_AS_OF_DATE}
+            sql, params = _SQL_ALL, {"as_of": _DEMO_AS_OF_DATE}
         with get_conn() as conn:
-            return pd.read_sql(
-                f"""
-                SELECT
-                    s.sku,
-                    s.store_id,
-                    s.week_ending,
-                    s.units_sold,
-                    s.dollars_sold,
-                    CASE
-                        WHEN d.sku IS NOT NULL
-                             AND d.authorized_date  <= s.week_ending
-                             AND (d.deauthorized_date IS NULL
-                                  OR d.deauthorized_date > s.week_ending)
-                        THEN TRUE
-                        ELSE FALSE
-                    END                                             AS is_authorized,
-                    CASE
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM promotions p
-                            WHERE p.sku = s.sku
-                              AND s.week_ending BETWEEN p.start_week AND p.end_week
-                        ) THEN TRUE
-                        ELSE FALSE
-                    END                                             AS is_promo
-                FROM scan_data s
-                LEFT JOIN distribution_log d
-                    ON d.sku = s.sku AND d.store_id = s.store_id
-                {where_clause}
-                ORDER BY s.sku, s.store_id, s.week_ending
-                """,
-                conn,
-                params=params,
-            )
+            return pd.read_sql(sql, conn, params=params)
     except Exception:
         logger.exception("get_scan_data failed")
         return pd.DataFrame()
@@ -579,7 +606,9 @@ def _fmt_date_pdf(d) -> str:
     try:
         if d is None or (isinstance(d, float) and pd.isna(d)):
             return "—"
-        return pd.Timestamp(d).strftime("%-d %b %Y")
+        ts = pd.Timestamp(d)
+        # %-d is Linux-only. Use ts.day for cross-platform safety.
+        return str(ts.day) + ts.strftime(" %b %Y")
     except Exception:
         return str(d)[:10] if d else "—"
 
