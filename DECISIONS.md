@@ -107,6 +107,13 @@ Each entry:
 
 ---
 
+### 2026-06-01 — Use cursor.execute() directly for psycopg2 queries, not pd.read_sql()
+- **Why:** `pd.read_sql()` with a raw psycopg2 connection falls through to an undocumented DBAPI2 fallback in pandas 2.x that emits `UserWarning: "Other DBAPI2 objects are not tested."` It works today but is explicitly on a deprecation path. The correct psycopg2 idiom is `cursor.execute(sql, params)` + `pd.DataFrame(cursor.fetchall(), columns=[...])`.
+- **Scope:** Any new database query in `app/data.py` or elsewhere that uses `get_conn()`. Existing `get_scan_data()` still uses `pd.read_sql()` — fix it when next touched.
+- **Do not:** Pass a raw psycopg2 connection to `pd.read_sql()` in new code. Either use the cursor path directly, or wrap the connection in a SQLAlchemy engine if `pd.read_sql()` is preferred.
+
+---
+
 ## Reversed / Superseded
 
 When a decision is overturned:

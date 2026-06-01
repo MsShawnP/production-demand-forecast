@@ -150,3 +150,31 @@ shouldn't re-attempt dead ends because the lesson got lost.
 **Status:** Resolved
 
 **Tags:** fly-io, deploy, postgres, fly-postgres-attach, existing-database
+
+---
+
+### 2026-06-01 — OOS correction test fixture was vacuously true for both buggy and fixed code
+
+**Attempted:** Wrote a 7-row pytest fixture with units_sold = [100, 105, 180, 0, 0, 98, 102] where week 3 (180 units) was the promo spike. Asserted `true_demand.mean() < 120` to verify the fix excluded promo weeks from the rolling median neighbor pool.
+
+**Why it didn't work:** `np.median` is robust to single outliers in a 5-element pool. The buggy neighbor set `[100, 105, 180, 98, 102]` has median 102; the fixed neighbor set `[100, 105, 98, 102]` has median 101.5. Both pass `< 120`. The test was green on the unfixed code from day one. Caught by ce-kieran-python-reviewer in Phase 3 of /ce:compound.
+
+**What we tried instead:** Sparse-neighbor fixture: only 1 baseline week (100) and 1 promo week (180) before the OOS block, nothing after. Buggy 2-element neighbor set `[100, 180]` → median 140. Fixed 1-element set `[100]` → median 100. Assertion `< 120` now gates on the actual correctness difference.
+
+**Status:** Resolved
+
+**Tags:** oos-correction, testing, test-fixture, promo-weeks, rolling-median, np.median, /ce:compound
+
+---
+
+### 2026-06-01 — WeasyPrint CVE doc initially claimed >=62.0 would have patched CVE-2025-68616
+
+**Attempted:** Drafted /ce:compound solution doc stating "jumping to `>=62.0` rather than `>=68.0` would have technically patched CVE-2025-68616, but 68.x was chosen for production-exposure reasons."
+
+**Why it didn't work:** Factually wrong. CVE-2025-68616 is present in every WeasyPrint release from 61.0 through 67.0 inclusive. 68.0 is the first fixed release per the advisory. There is no release in the 62.x–67.x range that patches this vulnerability. The "conservative choice" framing was invented, not verified. Caught by ce-security-sentinel in Phase 3 of /ce:compound.
+
+**What we tried instead:** Corrected the doc to state that 68.0 is the minimum correct fix, not a preference. Removed the "technically sufficient 62.x" framing entirely.
+
+**Status:** Resolved
+
+**Tags:** weasyprint, cve, cve-2025-68616, dependency-pinning, /ce:compound, security-review

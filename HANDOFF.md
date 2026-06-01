@@ -108,3 +108,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** New arc — portfolio landing page, next project in backlog, or additional features (multi-SKU conflict resolution, demand sensing).
 
 ---
+
+## 2026-06-01 — /ce:compound ×2: all /improve findings documented
+
+**Started from:** Arc complete, /improve done, one /ce:compound run still needed to close the arc.
+
+**Did:** Two /ce:compound Full runs documenting 4 /improve findings. First run: OOS rolling median promo neighbor contamination (critical logic bug — promo weeks inflated OOS demand corrections; test fixture fixed — sparse-neighbor version actually separates buggy from fixed). Second run: strftime %-d Windows portability (runtime_error), f-string SQL WHERE clause (security_issue, includes pd.read_sql DBAPI2 deprecation note), WeasyPrint CVE-2025-68616 (factual error caught — CVE spans 61.0–67.0 inclusive, 68.0 is first fix). Committed and pushed: 0c160ab + cfdc45f.
+
+**State:** docs/solutions/ has 6 entries. App live, 54 tests passing, all pushed. No open tasks.
+
+**Next:** New arc — (a) portfolio landing page, (b) next project in backlog, (c) additional features (multi-SKU conflict resolution, demand sensing). Next /improve due 2026-07-01.
+
+---
