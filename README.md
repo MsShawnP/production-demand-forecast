@@ -87,9 +87,17 @@ python db/seed_copack.py
 
 If the Cinderhaven Postgres is recreated, re-run the seeding script before starting the app.
 
+## Data contract
+
+Canonical Cinderhaven conformance — 50 SKUs across 5 product lines and 6 contracted retailers.
+
 ## Case study
 
 Uses Cinderhaven (a synthetic specialty food brand) as the demonstration case. Data is synthetic.
 The demo is anchored to a reference date of 2025-11-01. The Artisan Sauce hero SKU (CHP-AS-001)
 shows a February 2025 out-of-stock event where observed velocity was ~4.2 units/store/week
 and true demand corrects to ~5.0 units/store/week (+18%).
+
+---
+
+Built by [Lailara LLC](https://lailarallc.com) — data hygiene and analytics consulting for specialty food brands scaling into national retail.
