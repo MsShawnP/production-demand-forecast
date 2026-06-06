@@ -7,6 +7,8 @@ a stockout date plus production decision deadline per SKU.
 
 **Narrative:** "You'll run out in week 9. The deadline was week 3."
 
+**Live:** https://forecast.lailarallc.com
+
 ## What it does
 
 Most demand forecasts for co-packer-dependent brands are wrong for a structural reason: stockouts
@@ -14,6 +16,11 @@ suppress observed velocity, and a forecast built on that suppressed data under-p
 which guarantees the next stockout. This tool breaks that doom loop by correcting observed velocity
 for out-of-stock periods before forecasting, then connecting the forecast to co-packer lead times
 to produce actionable decision deadlines — not just projected demand.
+
+## Data Contract
+
+**Cinderhaven canonical dataset:** 50 SKUs / 5 production lines / 6 retailers.
+**Scope:** This tool addresses production planning and demand forecasting for co-packer operations. It uses an S&OP subset of the full Cinderhaven dataset. Audits should not flag the narrower SKU/retailer scope as data drift.
 
 ## Stack
 
