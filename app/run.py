@@ -24,6 +24,7 @@ from flask import jsonify
 from app.callbacks import register_callbacks
 from app.data import cache, init_cache
 from app.layout import create_layout
+from lailara_frame import wrap
 
 app = Dash(
     __name__,
@@ -42,7 +43,12 @@ if not _secret_key:
 server.secret_key = _secret_key
 init_cache(server)
 
-app.layout = create_layout()
+app.layout = wrap(
+    create_layout(),
+    tool_name="Production Demand Forecast",
+    no_container=True,
+    footer_note="Data: Cinderhaven Provisions synthetic dataset.",
+)
 register_callbacks(app)
 
 
