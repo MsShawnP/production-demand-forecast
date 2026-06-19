@@ -9,11 +9,13 @@ within one server round-trip (no full page reload).
 
 from __future__ import annotations
 
+import pandas as pd
 from dash import Input, Output, State, dcc, html, no_update
 
+from app.components import empty_state, kpi_chip
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
-    SG_ORANGE, TEXT, TEXT_SEC, TOKYO_ROSE,
+    SG_ORANGE, SURFACE_FAIL, SURFACE_WARN, TEXT, TEXT_SEC, TOKYO_ROSE,
 )
 
 TAB_ID = "tab-scenario"
@@ -40,18 +42,8 @@ _GROUP_STYLE = {
 }
 
 
-def layout() -> html.Div:
+def _controls_column() -> html.Div:
     return html.Div([
-        html.H2(
-            "Scenario Controls",
-            style={"fontFamily": FONT_SERIF, "fontWeight": "700",
-                   "fontSize": "22px", "marginBottom": "4px", "color": INK},
-        ),
-        html.P(
-            "Model how changes to demand or production constraints affect stockout timing.",
-            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px"},
-        ),
-
         # Inline validation message
         html.Div(id="scenario-validation-msg",
                  style={"color": TOKYO_ROSE, "fontSize": "13px",
@@ -135,8 +127,36 @@ def layout() -> html.Div:
                     "cursor": "pointer",
                 },
             ),
-        ], style={"marginBottom": "24px"}),
+        ], style={"marginTop": "8px"}),
+    ], style={"flex": "0 1 380px", "maxWidth": "380px", "minWidth": "0"})
 
+
+def layout() -> html.Div:
+    return html.Div([
+        html.H2(
+            "Scenario Controls",
+            style={"fontFamily": FONT_SERIF, "fontWeight": "700",
+                   "fontSize": "22px", "marginBottom": "4px", "color": INK},
+        ),
+        html.P(
+            "Model how changes to demand or production constraints affect stockout timing. "
+            "Adjust the inputs, then Apply — the impact appears on the right.",
+            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px",
+                   "maxWidth": "660px"},
+        ),
+
+        # Two columns: controls (left) + live results (right)
+        html.Div(
+            [
+                _controls_column(),
+                html.Div(
+                    id="scenario-results",
+                    style={"flex": "1 1 auto", "minWidth": "0"},
+                ),
+            ],
+            style={"display": "flex", "gap": "40px", "flexWrap": "wrap",
+                   "alignItems": "flex-start"},
+        ),
     ], style={"padding": "24px"})
 
 
@@ -179,3 +199,108 @@ def register_callbacks(app) -> None:
     )
     def reset_scenario(n_clicks):
         return 0, 0, 0
+
+    @app.callback(
+        Output("scenario-results", "children"),
+        Input("scenario-params", "data"),
+    )
+    def update_results(scenario_data):
+        from app.data import get_sop_summary
+        scenario = scenario_data or {}
+        promo_lift_pct = float(scenario.get("promo_lift_pct", 0.0))
+        new_doors      = int(scenario.get("new_doors", 0))
+        lead_time_slip = int(scenario.get("lead_time_slip_weeks", 0))
+
+        sop = get_sop_summary(
+            promo_lift_pct=promo_lift_pct,
+            new_doors=new_doors,
+            lead_time_slip_weeks=lead_time_slip,
+        )
+        if sop.empty:
+            return empty_state("No S&OP data available for this scenario.")
+
+        return _build_results(sop, promo_lift_pct, new_doors, lead_time_slip)
+
+
+def _build_results(sop, promo_lift_pct: float, new_doors: int,
+                   lead_time_slip: int) -> html.Div:
+    """Render the scenario impact: heading, KPIs, and the earliest stockouts."""
+    if promo_lift_pct > 0 or new_doors > 0 or lead_time_slip > 0:
+        parts = []
+        if promo_lift_pct > 0:
+            parts.append(f"+{int(promo_lift_pct*100)}% promo lift")
+        if new_doors > 0:
+            parts.append(f"{new_doors:,} new doors")
+        if lead_time_slip > 0:
+            parts.append(f"+{lead_time_slip}wk lead-time slip")
+        scenario_label = "Scenario: " + ", ".join(parts)
+    else:
+        scenario_label = "Scenario: Baseline"
+
+    total_skus    = len(sop)
+    need_action   = int(sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
+    critical_conf = int(
+        sop[sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
+    )
+
+    # Earliest stockouts — soonest decision deadlines first
+    ranked = sop.copy()
+    ranked["_days"] = pd.to_numeric(ranked.get("days_until_deadline"), errors="coerce")
+    ranked = ranked.sort_values("_days", na_position="last").head(6)
+
+    return html.Div([
+        html.Div(scenario_label,
+                 style={"fontSize": "13px", "color": TEXT_SEC, "marginBottom": "12px"}),
+        html.Div([
+            kpi_chip("Total SKUs", str(total_skus)),
+            kpi_chip("Need Action (≤ 28 days)", str(need_action), alert=need_action > 0),
+            kpi_chip("Critical Conflicts", str(critical_conf), alert=critical_conf > 0),
+        ], style={"marginBottom": "20px"}),
+        html.H3("Most urgent SKUs",
+                style={"fontFamily": FONT_SERIF, "fontWeight": "700",
+                       "fontSize": "16px", "marginBottom": "8px", "color": INK}),
+        _urgent_table(ranked),
+    ])
+
+
+def _urgent_table(ranked) -> html.Table:
+    headers = ["SKU", "Product", "Stockout", "Decision By", "Days", "Flag"]
+    header_row = html.Tr([
+        html.Th(h, style={"textAlign": "left", "fontFamily": FONT_SANS,
+                          "fontSize": "12px", "color": TEXT_SEC, "fontWeight": "600",
+                          "padding": "6px 10px", "borderBottom": f"1px solid {GREY_LIGHT}"})
+        for h in headers
+    ])
+    rows = []
+    for _, r in ranked.iterrows():
+        flag = str(r.get("deadline_flag", ""))
+        bg = (SURFACE_FAIL if flag in ("PAST_DUE", "CRITICAL")
+              else SURFACE_WARN if flag == "WARNING" else "#ffffff")
+        days = r.get("days_until_deadline")
+        days_txt = str(int(days)) if days is not None and pd.notna(days) else "—"
+        cells = [
+            r.get("sku", ""),
+            str(r.get("product_name", ""))[:26],
+            _fmt(r.get("stockout_date")),
+            _fmt(r.get("decision_deadline")),
+            days_txt,
+            flag,
+        ]
+        rows.append(html.Tr([
+            html.Td(c, style={"fontFamily": FONT_SANS, "fontSize": "13px",
+                              "padding": "6px 10px",
+                              "borderBottom": f"1px solid {GREY_LIGHT}"})
+            for c in cells
+        ], style={"backgroundColor": bg}))
+    return html.Table([html.Thead(header_row), html.Tbody(rows)],
+                      style={"borderCollapse": "collapse", "width": "100%"})
+
+
+def _fmt(d) -> str:
+    try:
+        if d is None or (isinstance(d, float) and pd.isna(d)):
+            return "—"
+        ts = pd.Timestamp(d)
+        return ts.strftime("%b ") + str(ts.day)
+    except Exception:
+        return str(d)[:10] if d else "—"

@@ -7,47 +7,17 @@ from __future__ import annotations
 
 from dash import dcc, html
 
-from app.constants import CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK, TEXT_SEC
+from app.constants import CANVAS, CHICAGO, FONT_SANS, GREY_LIGHT, TEXT_SEC
 from app.tabs import doom_loop, scenario_controls, sop_view
 
 
 def create_layout() -> html.Div:
     return html.Div(
-        style={"backgroundColor": CANVAS, "minHeight": "100vh", "fontFamily": FONT_SANS},
+        style={"backgroundColor": CANVAS, "fontFamily": FONT_SANS},
         children=[
             dcc.Store(id="scenario-params", data={}),
 
-            # Header
-            html.Div(
-                [
-                    html.H1(
-                        "Production Demand Forecast",
-                        style={
-                            "fontFamily": FONT_SERIF,
-                            "fontWeight": "700",
-                            "fontSize": "26px",
-                            "color": INK,
-                            "margin": "0 0 4px 0",
-                        },
-                    ),
-                    html.P(
-                        "S&OP · Scenario Modeling · Doom Loop",
-                        style={
-                            "fontFamily": FONT_SANS,
-                            "fontSize": "13px",
-                            "color": TEXT_SEC,
-                            "letterSpacing": "0.04em",
-                            "textTransform": "uppercase",
-                            "margin": "0",
-                        },
-                    ),
-                ],
-                style={
-                    "padding": "24px 32px 16px",
-                    "borderBottom": f"1px solid {GREY_LIGHT}",
-                    "backgroundColor": CANVAS,
-                },
-            ),
+            # Title is supplied by the Lailara frame nav — no in-app header here.
 
             # Tabs
             dcc.Tabs(

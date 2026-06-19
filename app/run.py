@@ -46,7 +46,6 @@ init_cache(server)
 app.layout = wrap(
     create_layout(),
     tool_name="Production Demand Forecast",
-    no_container=True,
     footer_note="Data: Cinderhaven Provisions synthetic dataset.",
 )
 register_callbacks(app)
