@@ -28,4 +28,4 @@ USER appuser
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "3", "--timeout", "120", "app.run:server"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "2", "--timeout", "120", "app.run:server"]

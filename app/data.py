@@ -41,6 +41,12 @@ _SPINE_SKU_COUNT = 50
 _SCENARIO_CACHE_TTL = 60          # seconds — scenario-keyed cache
 _DEMAND_CACHE_TTL   = 3600        # 1 hour — stable demand data
 
+# Bound the scan-data history window at the SQL level so the all-SKU path
+# never loads the full table into pandas (the OOM cause). The forecast needs
+# >= 52 weeks for STL(period=52); 78 weeks gives that plus ~1.5 years for the
+# OOS seasonal index, while cutting the load from ~1.34M rows to ~0.75M.
+_HISTORY_WEEKS = 78
+
 
 def init_cache(server) -> None:
     cache_dir = os.environ.get("CACHE_DIR", "/cache")
@@ -111,18 +117,23 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
     LEFT JOIN from scan_data spine. Aggregate channels are included but
     flagged (store_id ends with -AGG). OOS correction excludes them.
 
-    Row count should match product_master × authorized stores × weeks of history.
+    History is bounded to the trailing _HISTORY_WEEKS window at the SQL level
+    (both the all-SKU and single-SKU paths). This keeps the all-SKU forecast
+    path from loading the full ~1.34M-row table into pandas — the OOM cause —
+    while still returning the >= 52 weeks STL needs plus headroom for the OOS
+    seasonal index. `dollars_sold` is intentionally not selected: no analytics
+    or view consumes it.
     """
     from app.db import get_conn
     # Two static SQL strings — no f-string interpolation — so structural parts
     # are never user-influenced even if the call signature changes in the future.
+    # The trailing-window lower bound is passed as a bound parameter, not interpolated.
     _SQL_ALL = """
         SELECT
             s.sku,
             s.store_id,
             s.week_ending,
             s.units_sold,
-            s.dollars_sold,
             CASE
                 WHEN d.sku IS NOT NULL
                      AND d.authorized_date  <= s.week_ending
@@ -144,6 +155,7 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
         LEFT JOIN distribution_log d
             ON d.sku = s.sku AND d.store_id = s.store_id
         WHERE s.week_ending <= %(as_of)s
+          AND s.week_ending >  %(history_start)s
         ORDER BY s.sku, s.store_id, s.week_ending
     """
     _SQL_SKU = """
@@ -152,7 +164,6 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
             s.store_id,
             s.week_ending,
             s.units_sold,
-            s.dollars_sold,
             CASE
                 WHEN d.sku IS NOT NULL
                      AND d.authorized_date  <= s.week_ending
@@ -173,14 +184,21 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
         FROM scan_data s
         LEFT JOIN distribution_log d
             ON d.sku = s.sku AND d.store_id = s.store_id
-        WHERE s.sku = %(sku)s AND s.week_ending <= %(as_of)s
+        WHERE s.sku = %(sku)s
+          AND s.week_ending <= %(as_of)s
+          AND s.week_ending >  %(history_start)s
         ORDER BY s.sku, s.store_id, s.week_ending
     """
+    history_start = str(
+        (pd.Timestamp(_DEMO_AS_OF_DATE) - pd.Timedelta(weeks=_HISTORY_WEEKS)).date()
+    )
     try:
         if sku:
-            sql, params = _SQL_SKU, {"sku": sku, "as_of": _DEMO_AS_OF_DATE}
+            sql = _SQL_SKU
+            params = {"sku": sku, "as_of": _DEMO_AS_OF_DATE, "history_start": history_start}
         else:
-            sql, params = _SQL_ALL, {"as_of": _DEMO_AS_OF_DATE}
+            sql = _SQL_ALL
+            params = {"as_of": _DEMO_AS_OF_DATE, "history_start": history_start}
         with get_conn() as conn:
             return pd.read_sql(sql, conn, params=params)
     except Exception:
