@@ -134,126 +134,97 @@ SKU_PRODUCTION_CONFIG = [
     ("CHP-SB-010", "LINE-B", LINE_B_SNACK_LEAD, LINE_B_SNACK_MIN, None),
 ]
 
-# Production schedule — ~30 booked runs.
-# Reference date: 2025-11-01.  Week N starts on Monday 2025-11-03 + (N-1)*7 days.
-# KEY STORY:
-#   CHP-AS-001: run in week 4 (2025-11-24), NO run in weeks 8-14.
-#               stockout approximately week 9 with true demand.
-#   CHP-SC-001: NO scheduled run → stockout approximately week 10.
-#               decision deadline CRITICAL (past due given lead time = 8 wks).
-#               shared_line_conflict = True for both.
-# Line A booked at ~40% capacity through week 6.
+# Production schedule — booked runs, consistent with the calibrated inventory.
+# Reference date: 2025-11-01. In-horizon replenishment runs go to healthy SKUs
+# (they do not rescue an at-risk SKU's stockout); a cluster of late runs on
+# 2026-02-07 represents the "next available co-packer slot" arriving AFTER the
+# at-risk SKU has already stocked out — the core S&OP tension the tool surfaces.
 # (run_id, sku, line_id, scheduled_week, quantity_cases, status)
 PRODUCTION_SCHEDULE = [
-    # --- Line A: weeks 1-6 (40% capacity booked) ---
-    ("RUN-A001", "CHP-AS-002", "LINE-A", "2025-11-03", 500, "booked"),
-    ("RUN-A002", "CHP-AS-003", "LINE-A", "2025-11-10", 500, "booked"),
-    ("RUN-A003", "CHP-SC-002", "LINE-A", "2025-11-10", 300, "booked"),
-    ("RUN-A004", "CHP-AS-004", "LINE-A", "2025-11-17", 500, "booked"),
-    ("RUN-A005", "CHP-SC-003", "LINE-A", "2025-11-17", 300, "booked"),
-    # KEY: CHP-AS-001 run in week 4 (last scheduled run before stockout)
-    ("RUN-A006", "CHP-AS-001", "LINE-A", "2025-11-24", 500, "booked"),
-    ("RUN-A007", "CHP-AS-005", "LINE-A", "2025-11-24", 500, "booked"),
-    ("RUN-A008", "CHP-SC-004", "LINE-A", "2025-12-01", 300, "booked"),
-    ("RUN-A009", "CHP-AS-006", "LINE-A", "2025-12-01", 500, "booked"),
-    ("RUN-A010", "CHP-AS-007", "LINE-A", "2025-12-08", 500, "booked"),
-    ("RUN-A011", "CHP-SC-005", "LINE-A", "2025-12-08", 300, "booked"),
-    ("RUN-A012", "CHP-AS-008", "LINE-A", "2025-12-08", 500, "booked"),
-
-    # --- Line A: weeks 8-14 (future runs — NOT CHP-AS-001 or CHP-SC-001) ---
-    ("RUN-A013", "CHP-AS-009", "LINE-A", "2025-12-22", 500, "booked"),
-    ("RUN-A014", "CHP-AS-010", "LINE-A", "2026-01-05", 500, "booked"),
-    ("RUN-A015", "CHP-AS-002", "LINE-A", "2026-01-19", 500, "booked"),
-    ("RUN-A016", "CHP-AS-003", "LINE-A", "2026-02-02", 500, "booked"),
-
-    # --- Line B: weeks 1-6 ---
-    ("RUN-B001", "CHP-DG-001", "LINE-B", "2025-11-03", 350, "booked"),
-    ("RUN-B002", "CHP-PS-001", "LINE-B", "2025-11-03", 400, "booked"),
-    ("RUN-B003", "CHP-DG-002", "LINE-B", "2025-11-10", 350, "booked"),
-    ("RUN-B004", "CHP-SB-001", "LINE-B", "2025-11-10", 300, "booked"),
-    ("RUN-B005", "CHP-SC-006", "LINE-B", "2025-11-17", 300, "booked"),
-    ("RUN-B006", "CHP-PS-002", "LINE-B", "2025-11-24", 400, "booked"),
-    ("RUN-B007", "CHP-DG-003", "LINE-B", "2025-12-01", 350, "booked"),
-    ("RUN-B008", "CHP-SB-002", "LINE-B", "2025-12-01", 300, "booked"),
-    ("RUN-B009", "CHP-SC-007", "LINE-B", "2025-12-08", 300, "booked"),
-    ("RUN-B010", "CHP-PS-003", "LINE-B", "2025-12-08", 400, "booked"),
-
-    # --- Line B: weeks 8-14 ---
-    ("RUN-B011", "CHP-DG-004", "LINE-B", "2025-12-22", 350, "booked"),
-    ("RUN-B012", "CHP-SB-003", "LINE-B", "2025-12-22", 300, "booked"),
-    ("RUN-B013", "CHP-SC-008", "LINE-B", "2026-01-05", 300, "booked"),
-    ("RUN-B014", "CHP-PS-004", "LINE-B", "2026-01-05", 400, "booked"),
+    ('RUN-001', 'CHP-AS-002', 'LINE-A', '2025-11-15', 500, 'booked'),
+    ('RUN-002', 'CHP-AS-008', 'LINE-A', '2025-11-22', 500, 'booked'),
+    ('RUN-003', 'CHP-DG-001', 'LINE-B', '2025-11-29', 350, 'booked'),
+    ('RUN-004', 'CHP-DG-005', 'LINE-B', '2025-12-06', 350, 'booked'),
+    ('RUN-005', 'CHP-DG-008', 'LINE-B', '2025-12-13', 350, 'booked'),
+    ('RUN-006', 'CHP-PS-001', 'LINE-B', '2025-12-20', 400, 'booked'),
+    ('RUN-007', 'CHP-PS-005', 'LINE-B', '2025-12-27', 400, 'booked'),
+    ('RUN-008', 'CHP-PS-007', 'LINE-B', '2026-01-03', 400, 'booked'),
+    ('RUN-009', 'CHP-PS-010', 'LINE-B', '2025-11-15', 400, 'booked'),
+    ('RUN-010', 'CHP-SC-003', 'LINE-A', '2025-11-22', 300, 'booked'),
+    ('RUN-011', 'CHP-SC-006', 'LINE-B', '2025-11-29', 300, 'booked'),
+    ('RUN-012', 'CHP-SC-009', 'LINE-B', '2025-12-06', 300, 'booked'),
+    # Late runs — next co-packer slot lands after these SKUs stock out:
+    ('RUN-013', 'CHP-AS-001', 'LINE-A', '2026-02-07', 500, 'booked'),
+    ('RUN-014', 'CHP-SC-001', 'LINE-A', '2026-02-07', 300, 'booked'),
+    ('RUN-015', 'CHP-PS-004', 'LINE-B', '2026-02-07', 400, 'booked'),
+    ('RUN-016', 'CHP-DG-007', 'LINE-B', '2026-02-07', 350, 'booked'),
 ]
 
-# Current on-hand inventory as of 2025-11-01.
-# CHP-0001 and CHP-0023 are intentionally low to produce the conflict story.
-# CALIBRATION NOTE (HANDOFF.md): exact stockout timing depends on scan_data
-# velocities.  Adjust on_hand_cases for CHP-0001 and CHP-0023 once the OOS
-# correction module produces actual true_demand figures.
+# Current on-hand inventory as of 2025-11-01, in cases.
+# CALIBRATED against actual OOS-corrected forecast (78-week window) so the
+# S&OP grid shows a differentiated urgency distribution rather than a uniform
+# wall of PAST_DUE. Each SKU's on_hand_cases is sized so it stocks out at a
+# target week (or survives the 12-week horizon = "healthy"); combined with the
+# per-line lead times (SB/SC=8, AS/DG=10, PS=12) this yields, at baseline:
+#   ~15 healthy (OK), ~9 WARNING, ~12 CRITICAL, ~14 PAST_DUE.
+# The "stocks out ~week N" note is the design intent verified by the analytics.
+# To recalibrate after a demand-data change, re-run db/_calibrate.py.
 SKU_INVENTORY = [
-    # Demo conflict SKUs — designed to stock out within the 12-week horizon
-    ("CHP-AS-001", "2025-11-01", 50,  "Low inventory for demo story. Calibrate against scan_data."),
-    ("CHP-SC-001", "2025-11-01", 120, "No scheduled run. Calibrate against scan_data."),
-
-    # Artisan Sauces with recent production runs
-    ("CHP-AS-002", "2025-11-01", 420, None),
-    ("CHP-AS-003", "2025-11-01", 380, None),
-    ("CHP-AS-004", "2025-11-01", 350, None),
-    ("CHP-AS-005", "2025-11-01", 310, None),
-    ("CHP-AS-006", "2025-11-01", 290, None),
-    ("CHP-AS-007", "2025-11-01", 260, None),
-    ("CHP-AS-008", "2025-11-01", 240, None),
-    ("CHP-AS-009", "2025-11-01", 220, None),
-    ("CHP-AS-010", "2025-11-01", 200, None),
-
-    # Specialty Condiments top 5 (Line A)
-    ("CHP-SC-002", "2025-11-01", 280, None),
-    ("CHP-SC-003", "2025-11-01", 260, None),
-    ("CHP-SC-004", "2025-11-01", 240, None),
-    ("CHP-SC-005", "2025-11-01", 220, None),
-
-    # Specialty Condiments remaining (Line B)
-    ("CHP-SC-006", "2025-11-01", 320, None),
-    ("CHP-SC-007", "2025-11-01", 300, None),
-    ("CHP-SC-008", "2025-11-01", 280, None),
-    ("CHP-SC-009", "2025-11-01", 260, None),
-    ("CHP-SC-010", "2025-11-01", 240, None),
-
-    # Dried Goods (Line B)
-    ("CHP-DG-001", "2025-11-01", 380, None),
-    ("CHP-DG-002", "2025-11-01", 360, None),
-    ("CHP-DG-003", "2025-11-01", 340, None),
-    ("CHP-DG-004", "2025-11-01", 300, None),
-    ("CHP-DG-005", "2025-11-01", 280, None),
-    ("CHP-DG-006", "2025-11-01", 260, None),
-    ("CHP-DG-007", "2025-11-01", 240, None),
-    ("CHP-DG-008", "2025-11-01", 220, None),
-    ("CHP-DG-009", "2025-11-01", 200, None),
-    ("CHP-DG-010", "2025-11-01", 180, None),
-
-    # Pantry Staples (Line B)
-    ("CHP-PS-001", "2025-11-01", 400, None),
-    ("CHP-PS-002", "2025-11-01", 380, None),
-    ("CHP-PS-003", "2025-11-01", 360, None),
-    ("CHP-PS-004", "2025-11-01", 180, None),  # CHP-PS-004 is olive oil — smaller case
-    ("CHP-PS-005", "2025-11-01", 340, None),
-    ("CHP-PS-006", "2025-11-01", 320, None),
-    ("CHP-PS-007", "2025-11-01", 300, None),
-    ("CHP-PS-008", "2025-11-01", 280, None),
-    ("CHP-PS-009", "2025-11-01", 260, None),
-    ("CHP-PS-010", "2025-11-01", 240, None),
-
-    # Snack Bites (Line B)
-    ("CHP-SB-001", "2025-11-01", 350, None),
-    ("CHP-SB-002", "2025-11-01", 320, None),
-    ("CHP-SB-003", "2025-11-01", 300, None),
-    ("CHP-SB-004", "2025-11-01", 280, None),
-    ("CHP-SB-005", "2025-11-01", 260, None),
-    ("CHP-SB-006", "2025-11-01", 240, None),
-    ("CHP-SB-007", "2025-11-01", 220, None),
-    ("CHP-SB-008", "2025-11-01", 200, None),
-    ("CHP-SB-009", "2025-11-01", 180, None),
-    ("CHP-SB-010", "2025-11-01", 160, None),
+    # --- Artisan Sauces ---
+    ('CHP-AS-001', "2025-11-01", 1130, 'stocks out ~week 5'),
+    ('CHP-AS-002', "2025-11-01", 2524, 'healthy'),
+    ('CHP-AS-003', "2025-11-01", 937, 'stocks out ~week 11'),
+    ('CHP-AS-004', "2025-11-01", 1269, 'stocks out ~week 7'),
+    ('CHP-AS-005', "2025-11-01", 1600, 'stocks out ~week 12'),
+    ('CHP-AS-006', "2025-11-01", 2065, 'stocks out ~week 10'),
+    ('CHP-AS-007', "2025-11-01", 1831, 'stocks out ~week 8'),
+    ('CHP-AS-008', "2025-11-01", 2349, 'healthy'),
+    ('CHP-AS-009', "2025-11-01", 2048, 'stocks out ~week 11'),
+    ('CHP-AS-010', "2025-11-01", 1278, 'stocks out ~week 6'),
+    # --- Specialty Condiments ---
+    ('CHP-SC-001', "2025-11-01", 977, 'stocks out ~week 8'),
+    ('CHP-SC-002', "2025-11-01", 997, 'stocks out ~week 10'),
+    ('CHP-SC-003', "2025-11-01", 1714, 'healthy'),
+    ('CHP-SC-004', "2025-11-01", 1424, 'stocks out ~week 11'),
+    ('CHP-SC-005', "2025-11-01", 1243, 'stocks out ~week 9'),
+    ('CHP-SC-006', "2025-11-01", 2008, 'healthy'),
+    ('CHP-SC-007', "2025-11-01", 1423, 'stocks out ~week 10'),
+    ('CHP-SC-008', "2025-11-01", 1328, 'stocks out ~week 5'),
+    ('CHP-SC-009', "2025-11-01", 1573, 'healthy'),
+    ('CHP-SC-010', "2025-11-01", 1423, 'stocks out ~week 11'),
+    # --- Dried Goods ---
+    ('CHP-DG-001', "2025-11-01", 2226, 'healthy'),
+    ('CHP-DG-002', "2025-11-01", 1922, 'stocks out ~week 10'),
+    ('CHP-DG-003', "2025-11-01", 947, 'stocks out ~week 9'),
+    ('CHP-DG-004', "2025-11-01", 955, 'stocks out ~week 12'),
+    ('CHP-DG-005', "2025-11-01", 2466, 'healthy'),
+    ('CHP-DG-006', "2025-11-01", 1912, 'stocks out ~week 11'),
+    ('CHP-DG-007', "2025-11-01", 763, 'stocks out ~week 4'),
+    ('CHP-DG-008', "2025-11-01", 2479, 'healthy'),
+    ('CHP-DG-009', "2025-11-01", 1888, 'stocks out ~week 10'),
+    ('CHP-DG-010', "2025-11-01", 1353, 'stocks out ~week 7'),
+    # --- Pantry Staples ---
+    ('CHP-PS-001', "2025-11-01", 1576, 'healthy'),
+    ('CHP-PS-002', "2025-11-01", 2098, 'stocks out ~week 10'),
+    ('CHP-PS-003', "2025-11-01", 2078, 'stocks out ~week 12'),
+    ('CHP-PS-004', "2025-11-01", 2095, 'stocks out ~week 6'),
+    ('CHP-PS-005', "2025-11-01", 1218, 'healthy'),
+    ('CHP-PS-006', "2025-11-01", 794, 'stocks out ~week 11'),
+    ('CHP-PS-007', "2025-11-01", 927, 'healthy'),
+    ('CHP-PS-008', "2025-11-01", 799, 'stocks out ~week 12'),
+    ('CHP-PS-009', "2025-11-01", 1443, 'stocks out ~week 8'),
+    ('CHP-PS-010', "2025-11-01", 2537, 'healthy'),
+    # --- Snack Bites ---
+    ('CHP-SB-001', "2025-11-01", 1247, 'healthy'),
+    ('CHP-SB-002', "2025-11-01", 875, 'stocks out ~week 9'),
+    ('CHP-SB-003', "2025-11-01", 1610, 'stocks out ~week 10'),
+    ('CHP-SB-004', "2025-11-01", 563, 'stocks out ~week 6'),
+    ('CHP-SB-005', "2025-11-01", 1264, 'healthy'),
+    ('CHP-SB-006', "2025-11-01", 1645, 'stocks out ~week 8'),
+    ('CHP-SB-007', "2025-11-01", 1021, 'stocks out ~week 11'),
+    ('CHP-SB-008', "2025-11-01", 1295, 'stocks out ~week 7'),
+    ('CHP-SB-009', "2025-11-01", 1137, 'healthy'),
+    ('CHP-SB-010', "2025-11-01", 1940, 'stocks out ~week 10'),
 ]
 
 
