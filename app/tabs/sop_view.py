@@ -35,19 +35,19 @@ from app.constants import (
 TAB_ID = "tab-sop"
 
 _COLUMN_DEFS = [
-    {"field": "sku",                "headerName": "SKU",               "width": 110, "pinned": "left"},
-    {"field": "product_name",       "headerName": "Product",           "width": 240},
-    {"field": "product_line",       "headerName": "Line",              "width": 160},
+    {"field": "sku",                "headerName": "SKU",               "minWidth": 100, "flex": 1, "pinned": "left"},
+    {"field": "product_name",       "headerName": "Product",           "minWidth": 140, "flex": 2},
+    {"field": "product_line",       "headerName": "Line",              "minWidth": 100, "flex": 2},
     {"field": "weekly_forecast_mean", "headerName": "Fcst/wk",
-     "width": 90, "type": "numericColumn",
+     "minWidth": 80, "flex": 1, "type": "numericColumn",
      "valueFormatter": {"function": "params.value ? params.value.toFixed(0) : '—'"}},
-    {"field": "stockout_week_label", "headerName": "Stockout",         "width": 120},
-    {"field": "deadline_label",     "headerName": "Decision By",       "width": 120},
+    {"field": "stockout_week_label", "headerName": "Stockout",         "minWidth": 90, "flex": 1},
+    {"field": "deadline_label",     "headerName": "Decision By",       "minWidth": 90, "flex": 1},
     {"field": "days_until_deadline", "headerName": "Days Left",
-     "width": 90, "type": "numericColumn",
+     "minWidth": 70, "flex": 1, "type": "numericColumn",
      "valueFormatter": {"function": "params.value != null ? params.value : '—'"}},
-    {"field": "deadline_flag",      "headerName": "Flag",              "width": 100},
-    {"field": "conflict_label",     "headerName": "Conflict",          "width": 120},
+    {"field": "deadline_flag",      "headerName": "Flag",              "minWidth": 80, "flex": 1},
+    {"field": "conflict_label",     "headerName": "Conflict",          "minWidth": 90, "flex": 1},
 ]
 
 _ROW_STYLE = {
