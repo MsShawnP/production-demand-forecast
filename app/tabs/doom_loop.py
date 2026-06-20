@@ -82,7 +82,7 @@ def layout() -> html.Div:
                     "fontStyle": "italic",
                 },
             ),
-        ], style={"maxWidth": "660px", "marginBottom": "40px"}),
+        ], style={"marginBottom": "40px"}),
 
         # ── Section 2: Hero case ───────────────────────────────────────────
         html.H2(
@@ -248,7 +248,7 @@ def _build_hero_cards(
             f"demand from the forecast. The brand plans to the suppressed number, "
             f"underorders, and the next stockout is already booked. Correcting the "
             f"out-of-stock weeks before forecasting is what breaks the cycle.",
-            style={**_prose_style(), "maxWidth": "660px", "marginTop": "0"},
+            style={**_prose_style(), "marginTop": "0"},
         ),
     ])
 

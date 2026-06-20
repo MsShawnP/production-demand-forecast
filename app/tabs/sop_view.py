@@ -345,7 +345,7 @@ def _build_detail_panel(row: dict, scenario: dict) -> html.Div:
                                      "fontSize": "18px", "marginBottom": "8px"}),
         dcc.Graph(figure=fig, config={"displayModeBar": False}),
         html.P(doom_text, style={
-            "fontSize": "14px", "color": TEXT_SEC, "maxWidth": "660px",
+            "fontSize": "14px", "color": TEXT_SEC,
             "borderLeft": f"3px solid {GREY_LIGHT}", "paddingLeft": "12px",
             "marginTop": "12px",
         }),

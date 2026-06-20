@@ -141,8 +141,7 @@ def layout() -> html.Div:
         html.P(
             "Model how changes to demand or production constraints affect stockout timing. "
             "Adjust the inputs, then Apply — the impact appears on the right.",
-            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px",
-                   "maxWidth": "660px"},
+            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px"},
         ),
 
         # Two columns: controls (left) + live results (right)
