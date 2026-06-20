@@ -1,15 +1,15 @@
 """Doom loop narrative tab — the portfolio teaching tool.
 
-Section 1: "The Doom Loop" — four-paragraph Economist-style narrative.
-Section 2: Artisan Sauce hero case chart — CHP-0001 observed vs. OOS-corrected.
+Section 1: "The Doom Loop" — Economist-style narrative of the OOS feedback cycle.
+Section 2: Hidden-demand hero case — CHP-PS-008 (Italian Seasoning Blend).
 
-Deferred to Implementation (from plan): verify that the February 2025 OOS event
-in scan_data falls on CHP-0001 (Roasted Tomato Basil Marinara) at Walmart stores.
-If not, identify the correct SKU/store combination before this tab goes live.
-This tab queries the data dynamically and falls back gracefully if not found.
-
-AE4: chart shows two line traces; February OOS window is marked; true_demand
-trace is higher than observed during OOS weeks.
+The hero is reframed around what the data actually shows. Stockouts in this
+dataset are encoded as MISSING rows (an authorized store goes dark for a week),
+not a dramatic shelf-clearing event. The correction is real but modest (~5% of
+velocity), so the hero visual is the persistence of the gap — dark store-weeks
+over time and the cumulative demand it hides — not two near-identical velocity
+lines. Every number is derived from the gap-based OOS computation; nothing is
+hardcoded. The tab falls back gracefully if the hero SKU is not found.
 """
 
 from __future__ import annotations
@@ -20,25 +20,24 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import dcc, html
 
-from app.charts import add_vline_at_date, base_chart_layout
+from app.charts import base_chart_layout
 from app.components import dark_card
 from app.constants import (
-    CANVAS, CHICAGO_LT, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
+    CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
     SG_ORANGE, TEXT, TEXT_SEC, TEAL, TOKYO_ROSE,
 )
 
 logger = logging.getLogger(__name__)
 TAB_ID = "tab-doom-loop"
 
-# Hero case defaults — overridden if a different SKU/store shows the Feb OOS event
-_HERO_SKU    = "CHP-0001"
-_HERO_RETAILER_PREFIX = "WM"   # Walmart store IDs start with WM
-_FEB_OOS_START = "2025-02-01"
-_FEB_OOS_END   = "2025-03-01"
+# Hero case — CHP-PS-008 carries the strongest persistent-OOS signal in the
+# scan data (dark in 76 of 78 weeks, the largest hidden-demand total). Stores
+# span six retailers, so the story is "across the retail network", not one chain.
+_HERO_SKU = "CHP-PS-008"
 
 
 def layout() -> html.Div:
-    hero_chart, before_after = _build_hero_section()
+    hero_title, hero_subtitle, hero_chart, hero_cards = _build_hero_section()
 
     return html.Div([
         # ── Section 1: Narrative ───────────────────────────────────────────
@@ -56,18 +55,19 @@ def layout() -> html.Div:
                 style=_prose_style(),
             ),
             html.P(
-                "When a stockout happens — and for co-packer brands it will — "
-                "the weeks of zero sales are recorded in the point-of-sale data. "
-                "Those weeks lower the trailing average. The trailing average becomes "
-                "the next forecast. The next forecast produces a smaller reorder. "
-                "The smaller reorder shortens the buffer. The stockout repeats.",
+                "When a store stocks out it does not record a zero — it simply goes "
+                "dark, and that week leaves no row in the point-of-sale data. "
+                "Velocity is computed over the stores still selling, so the gap is "
+                "invisible. Spread across roughly a tenth of stores, week after "
+                "week, it quietly understates true demand.",
                 style=_prose_style(),
             ),
             html.P(
-                "The corrupted signal is self-reinforcing. Each stockout makes the "
-                "next one more likely. Brands mistake the suppressed baseline for "
-                "a demand decline and respond by cutting production — precisely the "
-                "wrong move.",
+                "The understated demand becomes the forecast. The conservative "
+                "forecast sizes a smaller reorder. The smaller reorder shortens the "
+                "buffer, so more stores go dark — and the retailer's on-shelf-"
+                "availability scorecard slips, putting the brand's authorization at "
+                "risk. Each turn of the loop tightens it.",
                 style=_prose_style(),
             ),
             html.P(
@@ -84,19 +84,19 @@ def layout() -> html.Div:
             ),
         ], style={"maxWidth": "660px", "marginBottom": "40px"}),
 
-        # ── Section 2: Hero case chart ─────────────────────────────────────
+        # ── Section 2: Hero case ───────────────────────────────────────────
         html.H2(
-            "The Artisan Sauce Case",
+            hero_title,
             style={"fontFamily": FONT_SERIF, "fontWeight": "700",
                    "fontSize": "22px", "marginBottom": "4px", "color": INK},
         ),
         html.P(
-            "Roasted Tomato Basil Marinara (CHP-0001) at Walmart — February 2025.",
+            hero_subtitle,
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px"},
         ),
 
         hero_chart,
-        before_after,
+        hero_cards,
 
     ], style={"padding": "24px"})
 
@@ -109,151 +109,145 @@ def register_callbacks(app) -> None:
 # Private: hero case section builder
 # ---------------------------------------------------------------------------
 
-def _build_hero_section() -> tuple[html.Div, html.Div]:
-    """Build the hero case chart and before/after callout boxes."""
-    try:
-        from app.data import get_true_demand
-        td = get_true_demand(sku=_HERO_SKU)
-        if td.empty:
-            return _fallback_chart(), _fallback_callouts()
+def _build_hero_section() -> tuple[str, str, html.Div, html.Div]:
+    """Build the reframed hero: title, subtitle, dark-store-weeks chart, cards.
 
+    All figures come from the gap-based OOS computation for the hero SKU.
+    Falls back to a safe message (never crashes) if the case is not found.
+    """
+    fallback_title = "The Hidden-Demand Case"
+    try:
+        from app.data import get_product_master, get_true_demand
+
+        td = get_true_demand(sku=_HERO_SKU)
+        if td.empty or "is_oos" not in td.columns or not bool(td["is_oos"].any()):
+            return fallback_title, "", _fallback_chart(), html.Div()
+
+        td = td.copy()
         td["week_ending"] = pd.to_datetime(td["week_ending"])
 
-        # Find the February OOS window
-        feb_start = pd.Timestamp(_FEB_OOS_START)
-        feb_end   = pd.Timestamp(_FEB_OOS_END)
-
-        # Filter to Walmart stores only
-        walmart_mask = td["store_id"].str.startswith(_HERO_RETAILER_PREFIX)
-        walmart_td = td[walmart_mask].copy()
-
-        if walmart_td.empty:
-            return _fallback_chart(), _fallback_callouts()
-
-        # Aggregate to weekly SKU mean across Walmart stores (mean velocity/store/week)
-        weekly = (
-            walmart_td.groupby("week_ending")
+        # Weekly aggregates: total observed vs corrected, count of dark stores
+        wk = (
+            td.groupby("week_ending")
             .agg(
-                units_sold=("units_sold", "mean"),
-                true_demand=("true_demand", "mean"),
+                observed=("units_sold", "sum"),
+                corrected=("true_demand", "sum"),
+                dark=("is_oos", "sum"),
             )
-            .reset_index()
-            .sort_values("week_ending")
+            .sort_index()
         )
+        weekly_hidden = (
+            td[td["is_oos"]].groupby("week_ending")["true_demand"].sum()
+            .reindex(wk.index, fill_value=0.0)
+        )
+        cum_hidden = weekly_hidden.cumsum()
 
-        # Identify OOS window (weeks where mean true_demand > units_sold significantly)
-        oos_weeks = walmart_td[walmart_td["is_oos"]]["week_ending"].unique()
-        feb_oos = [w for w in oos_weeks
-                   if feb_start <= pd.Timestamp(w) < feb_end]
+        # Headline stats — all derived, none hardcoded
+        total_dark   = int(td["is_oos"].sum())
+        hidden_units = float(td.loc[td["is_oos"], "true_demand"].sum())
+        understate   = ((wk["corrected"] - wk["observed"])
+                        / wk["observed"].where(wk["observed"] > 0)) * 100
+        avg_under    = float(understate.mean())
+        peak_under   = float(understate.max())
+        weeks_dark   = int((wk["dark"] > 0).sum())
+        n_weeks      = int(len(wk))
+        window_start = wk.index.min().strftime("%b %Y")
+        window_end   = wk.index.max().strftime("%b %Y")
 
-        # Compute annotation stats
-        if feb_oos:
-            pre_mask = weekly["week_ending"] < feb_start
-            pre_mean = weekly[pre_mask]["units_sold"].tail(8).mean()
-            oos_mask = weekly["week_ending"].isin(pd.to_datetime(feb_oos))
-            oos_observed = weekly[oos_mask]["units_sold"].mean()
-            oos_corrected = weekly[oos_mask]["true_demand"].mean()
-            pct_lift = ((oos_corrected - oos_observed) / max(pre_mean, 0.01)) * 100 if pre_mean else 18
-        else:
-            oos_observed, oos_corrected, pct_lift = 4.2, 5.0, 18.0
-            feb_oos = []
+        # Product name from the DB (do not invent one)
+        name = _HERO_SKU
+        pm = get_product_master()
+        if not pm.empty and _HERO_SKU in pm["sku"].values:
+            name = str(pm.loc[pm["sku"] == _HERO_SKU, "product_name"].iloc[0])
 
-        fig = _build_hero_chart(weekly, feb_oos, oos_observed, oos_corrected, pct_lift)
-        callouts = _build_callouts(oos_observed, oos_corrected, pct_lift)
+        title = f"The Hidden-Demand Case: {name}"
+        subtitle = (
+            f"{_HERO_SKU} across the retail network — "
+            f"{n_weeks} weeks, {window_start} to {window_end}."
+        )
+        fig = _build_dark_weeks_chart(wk.index, wk["dark"], cum_hidden)
+        cards = _build_hero_cards(
+            hidden_units, total_dark, avg_under, peak_under, weeks_dark, n_weeks
+        )
         return (
+            title,
+            subtitle,
             dcc.Graph(figure=fig, config={"displayModeBar": False},
                       style={"marginBottom": "24px"}),
-            callouts,
+            cards,
         )
 
     except Exception:
         logger.exception("Hero case section failed — showing fallback")
-        return _fallback_chart(), _fallback_callouts()
+        return fallback_title, "", _fallback_chart(), html.Div()
 
 
-def _build_hero_chart(
-    weekly: pd.DataFrame,
-    feb_oos_weeks: list,
-    observed: float,
-    corrected: float,
-    pct_lift: float,
-) -> go.Figure:
+def _build_dark_weeks_chart(weeks, dark_counts, cum_hidden) -> go.Figure:
+    """Bars = authorized stores dark each week; line = cumulative hidden units."""
     fig = go.Figure()
-
-    fig.add_trace(go.Scatter(
-        x=weekly["week_ending"],
-        y=weekly["units_sold"],
-        name="Observed velocity",
-        mode="lines",
-        line=dict(color=TOKYO_ROSE, width=2),
+    fig.add_trace(go.Bar(
+        x=list(weeks), y=list(dark_counts),
+        name="Authorized stores dark (OOS)",
+        marker_color=SG_ORANGE, opacity=0.85,
     ))
     fig.add_trace(go.Scatter(
-        x=weekly["week_ending"],
-        y=weekly["true_demand"],
-        name="True demand (OOS-corrected)",
-        mode="lines",
-        line=dict(color=TEAL, width=2.5),
+        x=list(weeks), y=list(cum_hidden),
+        name="Cumulative hidden demand (units)",
+        yaxis="y2", mode="lines",
+        line=dict(color=CHICAGO, width=2.5),
     ))
-
-    # Shade February OOS window
-    if feb_oos_weeks:
-        oos_sorted = sorted(pd.Timestamp(w) for w in feb_oos_weeks)
-        add_vline_at_date(fig, oos_sorted[0], "OOS start",
-                          color=TOKYO_ROSE, dash="dot", width=1.0,
-                          annotation_position="top left")
-        if len(oos_sorted) > 1:
-            add_vline_at_date(fig, oos_sorted[-1], "OOS end",
-                              color=TOKYO_ROSE, dash="dot", width=1.0,
-                              annotation_position="top right")
-
-    # Annotation
-    annotation_text = (
-        f"Feb stockout · Observed: {observed:.1f} u/s/wk · "
-        f"True demand: {corrected:.1f} u/s/wk (+{pct_lift:.0f}%)"
-    )
-    if weekly["week_ending"].notna().any():
-        mid_week = weekly["week_ending"].quantile(0.5, interpolation="nearest")
-        fig.add_annotation(
-            x=mid_week, y=weekly["true_demand"].max() * 1.05,
-            text=annotation_text,
-            showarrow=False,
-            font=dict(family=FONT_SANS, size=12, color=INK),
-            bgcolor="rgba(245,243,238,0.95)",
-            bordercolor=GREY_LIGHT, borderwidth=1, borderpad=6,
-        )
 
     layout_cfg = base_chart_layout(
-        height=340,
-        y_title="Units / store / week",
+        height=360,
+        y_title="Stores with no scan row",
         show_legend=True,
     )
     fig.update_layout(**layout_cfg)
+    fig.update_layout(
+        margin=dict(l=10, r=70, t=30, b=50),
+        yaxis2=dict(
+            title="Cumulative hidden units",
+            overlaying="y", side="right", showgrid=False,
+            tickfont=dict(family=FONT_SANS, size=12, color=TEXT_SEC),
+            title_font=dict(family=FONT_SANS, size=13, color=TEXT_SEC),
+            rangemode="tozero",
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                    xanchor="left", x=0),
+    )
     return fig
 
 
-def _build_callouts(
-    observed: float, corrected: float, pct_lift: float
+def _build_hero_cards(
+    hidden_units: float, total_dark: int, avg_under: float,
+    peak_under: float, weeks_dark: int, n_weeks: int,
 ) -> html.Div:
     return html.Div([
         html.Div([
             dark_card(
-                primary="Before correction",
-                secondary=f"Observed velocity: {observed:.1f} u/s/wk",
-                muted="OOS weeks counted as zero demand. Forecast suppressed.",
+                primary=f"{hidden_units:,.0f} units",
+                secondary=f"hidden across {total_dark:,} dark store-weeks",
+                muted="demand the raw POS signal never recorded",
             ),
-            html.Span("→", style={"fontSize": "28px", "color": TEXT_SEC,
-                                   "margin": "0 16px", "alignSelf": "center"}),
             dark_card(
-                primary="After correction",
-                secondary=f"True demand: {corrected:.1f} u/s/wk (+{pct_lift:.0f}%)",
-                muted="OOS weeks replaced with rolling-median baseline × seasonal index.",
+                primary=f"{avg_under:.1f}%",
+                secondary=f"average velocity understatement (peak {peak_under:.1f}%)",
+                muted="how much out-of-stocks suppress the forecast input",
             ),
-        ], style={"display": "flex", "alignItems": "flex-start",
-                  "gap": "0", "marginBottom": "16px"}),
+            dark_card(
+                primary=f"{weeks_dark} of {n_weeks} weeks",
+                secondary="had at least one authorized store dark",
+                muted="persistent leakage, not a single event",
+            ),
+        ], style={"display": "flex", "flexWrap": "wrap", "gap": "16px",
+                  "marginBottom": "16px"}),
         html.P(
-            "The corrected demand estimate raises the replenishment signal and "
-            "produces an earlier decision deadline. Without correction, the brand "
-            "would plan to the suppressed number and repeat the cycle.",
+            f"No single week looks like a crisis — the worst undercounts velocity "
+            f"by {peak_under:.1f}%. But the leakage never stops: stores go dark in "
+            f"{weeks_dark} of {n_weeks} weeks, hiding {hidden_units:,.0f} units of "
+            f"demand from the forecast. The brand plans to the suppressed number, "
+            f"underorders, and the next stockout is already booked. Correcting the "
+            f"out-of-stock weeks before forecasting is what breaks the cycle.",
             style={**_prose_style(), "maxWidth": "660px", "marginTop": "0"},
         ),
     ])
@@ -261,17 +255,13 @@ def _build_callouts(
 
 def _fallback_chart() -> html.Div:
     return html.Div(
-        "Demo case not found — run db/seed_copack.py against the Cinderhaven database "
-        "and ensure scan_data contains the February 2025 OOS event for CHP-0001 at "
-        "Walmart stores.",
+        "Demo case not found — run db/seed_copack.py against the Cinderhaven "
+        "database and confirm scan_data carries authorized-but-missing store-weeks "
+        f"(gaps) for {_HERO_SKU}.",
         style={"padding": "40px 24px", "color": TEXT_SEC, "fontSize": "14px",
                "border": f"1px solid {GREY_LIGHT}", "borderRadius": "2px",
                "marginBottom": "24px"},
     )
-
-
-def _fallback_callouts() -> html.Div:
-    return html.Div()
 
 
 def _prose_style() -> dict:

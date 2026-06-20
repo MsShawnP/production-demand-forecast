@@ -43,59 +43,92 @@ def _weeks(start: str, n: int) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# detect_oos_periods — detection logic (the subtle guard condition)
+# detect_oos_periods — gap-based detection
+#
+# Stockouts are encoded as MISSING rows: an authorized store has no scan row
+# for the stocked-out week. Detection reconstructs each (sku, store) weekly
+# calendar and inserts a synthetic OOS row for every authorized gap week.
+# The global calendar is built from weeks present in the data, so fixtures use
+# an "anchor" store/sku that reports every week (in production the 386-store
+# panel guarantees this).
 # ---------------------------------------------------------------------------
 
 class TestDetectOosPeriods:
 
-    def test_authorized_zero_units_is_flagged_oos(self):
-        df = _make_scan_df([{"units_sold": 0, "is_authorized": True}])
-        out = detect_oos_periods(df)
-        assert out["is_oos"].iloc[0] is True or out["is_oos"].iloc[0] == True
+    def _gappy(self, present_idx: list[int], n: int = 5,
+               sku: str = "CHP-0001", store: str = "RET-A-1",
+               is_authorized: bool = True) -> pd.DataFrame:
+        """One (sku, store) present only at `present_idx` of n weeks, plus an
+        anchor store that covers every week so the calendar is complete."""
+        weeks = _weeks("2024-01-06", n)
+        rows = [
+            {"sku": sku, "store_id": store, "week_ending": weeks[i],
+             "units_sold": 5, "is_authorized": is_authorized}
+            for i in present_idx
+        ]
+        rows += [  # anchor: a different store reporting every week
+            {"sku": sku, "store_id": "RET-ANCHOR", "week_ending": w,
+             "units_sold": 7, "is_authorized": True}
+            for w in weeks
+        ]
+        return _make_scan_df(rows)
 
-    def test_unauthorized_zero_units_is_not_oos(self):
-        # Zero units with no authorization record is a gap in distribution, not a stockout.
-        df = _make_scan_df([{"units_sold": 0, "is_authorized": False}])
+    def test_missing_authorized_week_inserted_as_oos(self):
+        df = self._gappy(present_idx=[0, 1, 3])  # week 2 (and 4) missing
         out = detect_oos_periods(df)
-        assert not out["is_oos"].iloc[0]
+        wk2 = pd.Timestamp(_weeks("2024-01-06", 5)[2])
+        gap = out[(out["store_id"] == "RET-A-1") & (out["week_ending"] == wk2)]
+        assert len(gap) == 1
+        assert bool(gap["is_oos"].iloc[0])
+        assert gap["units_sold"].iloc[0] == 0
 
-    def test_nonzero_units_is_never_oos(self):
+    def test_present_rows_are_never_oos(self):
+        df = self._gappy(present_idx=[0, 1, 2, 3, 4])  # fully present
+        out = detect_oos_periods(df)
+        assert not out["is_oos"].any()
+
+    def test_nonzero_present_row_is_never_oos(self):
         df = _make_scan_df([{"units_sold": 10, "is_authorized": True}])
         out = detect_oos_periods(df)
         assert not out["is_oos"].iloc[0]
 
-    def test_aggregate_channel_store_is_never_oos(self):
-        # UNFI-AGG, KEHE-AGG, DTC-AGG have lumpy bulk cycles, not stockout signals.
-        for agg_id in ("UNFI-AGG", "KEHE-AGG", "DTC-AGG"):
-            df = _make_scan_df([
-                {"store_id": agg_id, "units_sold": 0, "is_authorized": True}
-            ])
-            out = detect_oos_periods(df)
-            assert not out["is_oos"].iloc[0], f"{agg_id} should not be flagged OOS"
-
-    def test_row_count_preserved(self):
-        # Institutional learning: no silent row drops (inner-join anti-pattern).
-        rows = [
-            {"sku": "CHP-0001", "store_id": "WM-001", "units_sold": 0, "is_authorized": True},
-            {"sku": "CHP-0001", "store_id": "WM-001", "units_sold": 5, "is_authorized": True},
-            {"sku": "CHP-0002", "store_id": "WM-001", "units_sold": 0, "is_authorized": False},
-        ]
-        df = _make_scan_df(rows)
+    def test_gap_for_unauthorized_store_not_flagged(self):
+        # A store that is never authorized has no authorized window → no gaps.
+        df = self._gappy(present_idx=[0, 1, 3], is_authorized=False)
         out = detect_oos_periods(df)
-        assert len(out) == len(df)
+        a1 = out[out["store_id"] == "RET-A-1"]
+        assert not a1["is_oos"].any()
+        assert len(a1) == 3  # no rows inserted for the unauthorized store
 
-    def test_mixed_sku_store_pairs(self):
+    def test_aggregate_channel_gap_not_filled(self):
+        weeks = _weeks("2024-01-06", 5)
         rows = [
-            {"sku": "CHP-0001", "store_id": "WM-001", "units_sold": 0, "is_authorized": True},
-            {"sku": "CHP-0001", "store_id": "WM-002", "units_sold": 0, "is_authorized": False},
-            {"sku": "CHP-0002", "store_id": "WM-001", "units_sold": 3, "is_authorized": True},
+            {"store_id": "UNFI-AGG", "week_ending": weeks[i],
+             "units_sold": 100, "is_authorized": True}
+            for i in (0, 1, 3)
         ]
-        df = _make_scan_df(rows)
+        rows += [
+            {"store_id": "RET-ANCHOR", "week_ending": w,
+             "units_sold": 7, "is_authorized": True}
+            for w in weeks
+        ]
+        out = detect_oos_periods(_make_scan_df(rows))
+        assert not out[out["store_id"] == "UNFI-AGG"]["is_oos"].any()
+        assert (out["store_id"] == "UNFI-AGG").sum() == 3  # no gap rows added
+
+    def test_row_count_grows_by_gap_count(self):
+        df = self._gappy(present_idx=[0, 1, 2, 4])  # one gap at week 3
         out = detect_oos_periods(df)
-        row_by = out.set_index(["sku", "store_id"])["is_oos"]
-        assert row_by[("CHP-0001", "WM-001")]      # authorized + zero → OOS
-        assert not row_by[("CHP-0001", "WM-002")]  # unauthorized + zero → NOT OOS
-        assert not row_by[("CHP-0002", "WM-001")]  # non-zero → NOT OOS
+        assert len(out) == len(df) + 1
+        assert int(out["is_oos"].sum()) == 1
+
+    def test_gap_row_is_authorized_and_nonpromo(self):
+        df = self._gappy(present_idx=[0, 2])  # gap at week 1
+        out = detect_oos_periods(df)
+        gap = out[out["is_oos"]]
+        assert len(gap) == 1
+        assert bool(gap["is_authorized"].iloc[0])
+        assert not bool(gap["is_promo"].iloc[0])
 
 
 # ---------------------------------------------------------------------------

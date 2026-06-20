@@ -16,6 +16,14 @@ Institutional learnings applied here:
    price-convention-mismatch-oos-guard-clause-2026-05-28.md)
 - Aggregate channels (UNFI-AGG, KEHE-AGG, DTC-AGG) are NEVER flagged OOS.
   Their lumpy bulk cycles produce zero-sale weeks that are not stockouts.
+
+OOS encoding in this dataset:
+- Stockouts are encoded as MISSING rows — an authorized store simply has no
+  scan_data row for that week. The data contains no zero-sales rows. So OOS
+  detection is gap-based: detect_oos_periods reconstructs each (sku, store)
+  weekly calendar and inserts a synthetic OOS row for every authorized week
+  with no scan row. correct_velocity then fills its true_demand from the
+  surrounding weeks (the correction math itself is unchanged).
 """
 
 from __future__ import annotations
@@ -35,27 +43,62 @@ _AGGREGATE_STORES = frozenset({"UNFI-AGG", "KEHE-AGG", "DTC-AGG"})
 # ---------------------------------------------------------------------------
 
 def detect_oos_periods(df: pd.DataFrame) -> pd.DataFrame:
-    """Add a boolean `is_oos` column to the scan DataFrame.
+    """Add a boolean `is_oos` column, inserting a row for each OOS (gap) week.
 
-    A row is OOS when ALL of these hold:
-      1. units_sold == 0
-      2. is_authorized is True (row has a matching distribution_log record)
-      3. store_id is NOT an aggregate channel
+    Stockouts in this dataset are encoded as MISSING rows: an authorized store
+    has no scan_data row for the stocked-out week (the data has no zero-sales
+    rows). Detection is therefore gap-based:
 
-    Rows where units_sold > 0, or is_authorized is False, or store_id is an
-    aggregate channel get is_oos = False.
+      1. Build the global weekly calendar (every week_ending present in the data).
+      2. For each physical (sku, store_id) pair, take its authorized window
+         (first..last week where is_authorized is True).
+      3. Any calendar week inside that window with no scan row is OOS. A synthetic
+         row is inserted for it: units_sold=0, is_authorized=True, is_promo=False,
+         is_oos=True — so correct_velocity can fill its true_demand.
 
-    Returns the same DataFrame with an appended `is_oos` column.
-    The row count is always preserved (no joins or drops).
+    Existing scan rows are never OOS (the data carries no zero-sales rows).
+    Aggregate channels (UNFI-AGG, …) are never gap-filled — their lumpy bulk
+    cycles legitimately skip weeks.
+
+    Unlike the previous zero-based detector, this GROWS the row count by the
+    number of gap (OOS) weeks. `week_ending` is normalised to datetime64.
     """
     try:
         df = df.copy()
+        df["is_oos"] = False
+        if df.empty:
+            return df
+
+        df["week_ending"] = pd.to_datetime(df["week_ending"])
+        weeks = sorted(df["week_ending"].unique())        # global weekly calendar
+        pos_of = {w: i for i, w in enumerate(weeks)}
+        df["_pos"] = df["week_ending"].map(pos_of)
+
         is_agg = df["store_id"].isin(_AGGREGATE_STORES)
-        df["is_oos"] = (
-            (df["units_sold"] == 0)
-            & df["is_authorized"].astype(bool)
-            & (~is_agg)
-        )
+        gap_rows: list[tuple] = []
+        for (sku, store), grp in df[~is_agg].groupby(["sku", "store_id"], sort=False):
+            auth = grp[grp["is_authorized"].astype(bool)]
+            if auth.empty:
+                continue
+            lo, hi = int(auth["_pos"].min()), int(auth["_pos"].max())
+            present = set(grp["_pos"].tolist())
+            gap_rows.extend(
+                (sku, store, weeks[p]) for p in range(lo, hi + 1) if p not in present
+            )
+
+        df = df.drop(columns=["_pos"])
+        if gap_rows:
+            gd = pd.DataFrame(gap_rows, columns=["sku", "store_id", "week_ending"])
+            gd["units_sold"] = 0.0
+            gd["is_authorized"] = True
+            gd["is_promo"] = False
+            gd["is_oos"] = True
+            # carry any remaining columns (e.g. dollars_sold) as NA so concat aligns
+            for col in df.columns:
+                if col not in gd.columns:
+                    gd[col] = pd.NA
+            df = pd.concat([df, gd[df.columns]], ignore_index=True)
+
         return df
     except Exception:
         logger.exception("detect_oos_periods failed — returning input with is_oos=False")
