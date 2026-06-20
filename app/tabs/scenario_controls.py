@@ -12,10 +12,10 @@ from __future__ import annotations
 import pandas as pd
 from dash import Input, Output, State, dcc, html, no_update
 
-from app.components import empty_state, kpi_chip
+from app.components import empty_state
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
-    SG_ORANGE, SURFACE_FAIL, SURFACE_WARN, TEXT, TEXT_SEC, TOKYO_ROSE,
+    SG_ORANGE, SURFACE_FAIL, SURFACE_WARN, TEAL, TEXT, TEXT_SEC, TOKYO_ROSE,
 )
 
 TAB_ID = "tab-scenario"
@@ -218,13 +218,16 @@ def register_callbacks(app) -> None:
         if sop.empty:
             return empty_state("No S&OP data available for this scenario.")
 
-        return _build_results(sop, promo_lift_pct, new_doors, lead_time_slip)
+        baseline = get_sop_summary()
+        return _build_results(sop, baseline, promo_lift_pct, new_doors, lead_time_slip)
 
 
-def _build_results(sop, promo_lift_pct: float, new_doors: int,
+def _build_results(sop, baseline, promo_lift_pct: float, new_doors: int,
                    lead_time_slip: int) -> html.Div:
-    """Render the scenario impact: heading, KPIs, and the earliest stockouts."""
-    if promo_lift_pct > 0 or new_doors > 0 or lead_time_slip > 0:
+    """Render the scenario impact: heading, KPIs with baseline deltas, and urgent SKUs."""
+    is_scenario = promo_lift_pct > 0 or new_doors > 0 or lead_time_slip > 0
+
+    if is_scenario:
         parts = []
         if promo_lift_pct > 0:
             parts.append(f"+{int(promo_lift_pct*100)}% promo lift")
@@ -242,28 +245,133 @@ def _build_results(sop, promo_lift_pct: float, new_doors: int,
         sop[sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
     )
 
+    # Baseline metrics for delta comparison
+    bl_need_action = 0
+    bl_critical_conf = 0
+    if not baseline.empty:
+        bl_need_action = int(baseline["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
+        bl_critical_conf = int(
+            baseline[baseline["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
+        )
+
     # Earliest stockouts — soonest decision deadlines first
     ranked = sop.copy()
     ranked["_days"] = pd.to_numeric(ranked.get("days_until_deadline"), errors="coerce")
     ranked = ranked.sort_values("_days", na_position="last").head(6)
 
-    return html.Div([
+    # Merge baseline flags for comparison column
+    if is_scenario and not baseline.empty:
+        bl_flags = baseline[["sku", "deadline_flag"]].rename(
+            columns={"deadline_flag": "baseline_flag"}
+        )
+        ranked = ranked.merge(bl_flags, on="sku", how="left")
+    else:
+        ranked["baseline_flag"] = ranked["deadline_flag"]
+
+    # Narrative line summarizing the shift
+    narrative = None
+    if is_scenario and not baseline.empty:
+        narrative = _build_narrative(sop, baseline)
+
+    children = [
         html.Div(scenario_label,
-                 style={"fontSize": "13px", "color": TEXT_SEC, "marginBottom": "12px"}),
-        html.Div([
-            kpi_chip("Total SKUs", str(total_skus)),
-            kpi_chip("Need Action (≤ 28 days)", str(need_action), alert=need_action > 0),
-            kpi_chip("Critical Conflicts", str(critical_conf), alert=critical_conf > 0),
-        ], style={"marginBottom": "20px"}),
-        html.H3("Most urgent SKUs",
-                style={"fontFamily": FONT_SERIF, "fontWeight": "700",
-                       "fontSize": "16px", "marginBottom": "8px", "color": INK}),
-        _urgent_table(ranked),
-    ])
+                 style={"fontSize": "13px", "color": TEXT_SEC, "marginBottom": "4px"}),
+    ]
+
+    if narrative:
+        children.append(html.P(
+            narrative,
+            style={"fontSize": "13px", "color": INK, "marginBottom": "12px",
+                   "fontStyle": "italic"},
+        ))
+
+    children.append(html.Div([
+        _kpi_with_delta("Total SKUs", total_skus, total_skus, higher_is_worse=False),
+        _kpi_with_delta("Need Action", need_action, bl_need_action, higher_is_worse=True),
+        _kpi_with_delta("Critical Conflicts", critical_conf, bl_critical_conf, higher_is_worse=True),
+    ], style={"marginBottom": "20px"}))
+
+    children.append(html.H3(
+        "Most urgent SKUs",
+        style={"fontFamily": FONT_SERIF, "fontWeight": "700",
+               "fontSize": "16px", "marginBottom": "8px", "color": INK},
+    ))
+    children.append(_urgent_table(ranked, show_baseline=is_scenario))
+
+    return html.Div(children)
 
 
-def _urgent_table(ranked) -> html.Table:
+def _kpi_with_delta(label: str, value: int, baseline: int,
+                    *, higher_is_worse: bool) -> html.Div:
+    """KPI chip with baseline comparison. Shows delta when values differ."""
+    from app.constants import TOKYO_ROSE, INK
+    alert = higher_is_worse and value > 0
+    color = TOKYO_ROSE if alert else INK
+    delta = value - baseline
+
+    children = [
+        html.Span(str(value), style={"fontSize": "22px", "fontWeight": "700",
+                                      "color": color, "fontFamily": FONT_SANS}),
+        html.Span(label, style={"fontSize": "12px", "color": TEXT_SEC,
+                                 "display": "block", "marginTop": "2px"}),
+    ]
+
+    if delta != 0:
+        delta_color = TOKYO_ROSE if (higher_is_worse and delta > 0) or (not higher_is_worse and delta < 0) else TEAL
+        sign = "+" if delta > 0 else ""
+        children.append(html.Span(
+            f"Baseline: {baseline} | {sign}{delta}",
+            style={"fontSize": "11px", "color": delta_color, "display": "block",
+                   "marginTop": "4px", "fontWeight": "600"},
+        ))
+
+    return html.Div(
+        children,
+        style={
+            "background": "#ffffff",
+            "border": f"1px solid {GREY_LIGHT}",
+            "borderRadius": "2px",
+            "padding": "12px 20px",
+            "minWidth": "120px",
+            "display": "inline-block",
+            "marginRight": "12px",
+            "verticalAlign": "top",
+        },
+    )
+
+
+def _build_narrative(sop, baseline) -> str:
+    """One-line summary of how the scenario shifted stockout timing."""
+    sop_days = pd.to_numeric(sop.get("days_until_deadline"), errors="coerce")
+    bl_days = pd.to_numeric(baseline.get("days_until_deadline"), errors="coerce")
+
+    sop_mean = sop_days.mean()
+    bl_mean = bl_days.mean()
+
+    if pd.isna(sop_mean) or pd.isna(bl_mean):
+        return ""
+
+    diff = bl_mean - sop_mean
+    need_action = int(sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
+
+    if abs(diff) < 0.5:
+        return ""
+
+    if diff > 0:
+        return (
+            f"This scenario accelerates average stockout by {diff:.1f} days "
+            f"across {need_action} affected SKUs."
+        )
+    return (
+        f"This scenario delays average stockout by {abs(diff):.1f} days "
+        f"across {need_action} affected SKUs."
+    )
+
+
+def _urgent_table(ranked, *, show_baseline: bool = False) -> html.Table:
     headers = ["SKU", "Product", "Stockout", "Decision By", "Days", "Flag"]
+    if show_baseline:
+        headers.append("Baseline")
     header_row = html.Tr([
         html.Th(h, style={"textAlign": "left", "fontFamily": FONT_SANS,
                           "fontSize": "12px", "color": TEXT_SEC, "fontWeight": "600",
@@ -285,6 +393,8 @@ def _urgent_table(ranked) -> html.Table:
             days_txt,
             flag,
         ]
+        if show_baseline:
+            cells.append(str(r.get("baseline_flag", "—")))
         rows.append(html.Tr([
             html.Td(c, style={"fontFamily": FONT_SANS, "fontSize": "13px",
                               "padding": "6px 10px",
