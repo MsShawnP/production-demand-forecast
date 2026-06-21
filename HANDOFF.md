@@ -120,3 +120,34 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** New arc — (a) portfolio landing page, (b) next project in backlog, (c) additional features (multi-SKU conflict resolution, demand sensing). Next /improve due 2026-07-01.
 
 ---
+
+## 2026-06-20 — UX fixes, doom loop narrative, schema isolation
+
+**Started from:** App live, arc closed. Three UX issues + narrative polish + database wipe investigation.
+
+**Did (across two sessions, second resumed from context compaction):**
+
+1. **Three UX fixes** (each committed separately):
+   - `69c3f19` — Kill horizontal scroll on S&OP table (flex + minWidth columns)
+   - `8fec656` — Match text width to chart/table width across all tabs (removed maxWidth: 660px)
+   - `1d727a5` — Scenario Controls: baseline vs scenario deltas (KPI chips with colored deltas, narrative line, baseline flag column in urgent SKUs table)
+
+2. **Doom loop narrative** — User provided final copy for all three sections:
+   - `e5736ec` — Replace all three narrative sections with final signed-off copy
+   - `4cc6dde` — Tighten hero-case text and align PDF export template to match
+
+3. **Schema isolation** (Phase C investigation + fix):
+   - Root cause: cinderhaven-data-platform's `seed_all.py` runs `DROP SCHEMA IF EXISTS raw CASCADE`, destroying co-packer tables
+   - Fix: Created dedicated `copack` schema, moved 5 co-packer tables there
+   - `5d973d6` — `db.py` search_path → `copack,raw,public`, `seed_copack.py` creates `copack` schema
+   - Smoke test: dropped `raw`, co-packer tables survived intact
+   - cinderhaven-data-platform README updated (`8c98ebf` in that repo)
+   - `raw` schema restored via scan_data seeder (1.3M rows, all 50 SKUs)
+
+4. **App verified:** S&OP shows 50 SKUs, 4-tier differentiation (15 OK / 9 WARNING / 12 CRITICAL / 14 PAST_DUE). Doom loop hero CHP-PS-008 has 1,210 dark store-weeks.
+
+**State:** Working tree clean. Branch 6 commits ahead of origin (not pushed). `.env` currently configured with flypgadmin user pointing to Fly proxy on port 15433 — may need reverting for local dev if proxy is down. `raw` schema has shared tables populated but retailer/distributor/DTC pipeline tables are still empty (only scan_data was reseeded, not the full pipeline). This doesn't affect this app — it only needs scan_data + product_master + stores + distribution_log + copack tables.
+
+**Next:** Push to origin. Deploy to Fly.io to get the schema fix and narrative updates live. Next /improve due 2026-07-01.
+
+---

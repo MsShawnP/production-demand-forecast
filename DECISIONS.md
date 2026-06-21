@@ -70,10 +70,14 @@ Each entry:
 - **Scope:** `app/data.py` — `get_scan_data()` only. Other functions are unaffected.
 - **Do not:** Remove the `week_ending <= _DEMO_AS_OF_DATE` filter to "get all history." If more lookback is needed, change `_DEMO_AS_OF_DATE` or replace the EXISTS subquery with a CTE join first.
 
-### 2026-05-31 — Cinderhaven tables accessed via search_path, not schema prefix
-- **Why:** Cinderhaven data lives in the `raw` schema; co-packer tables land in `public`. Setting `search_path=raw,public` on the psycopg2 pool lets all SQL run without schema prefixes and keeps queries portable between dev (local proxy) and prod (Fly.io internal).
-- **Scope:** `app/db.py` pool options. All application SQL in this project.
-- **Do not:** Prefix table names with `raw.` in application SQL — let the search path resolve it. If a new table is added to `raw`, it is automatically visible without touching any queries.
+### ~~2026-05-31 — Cinderhaven tables accessed via search_path, not schema prefix~~
+~~Setting `search_path=raw,public` on the psycopg2 pool.~~
+**Superseded by:** 2026-06-20 schema isolation decision below.
+
+### 2026-06-20 — Isolate co-packer tables in dedicated `copack` schema
+- **Why:** cinderhaven-data-platform's `seed_all.py` runs `DROP SCHEMA IF EXISTS raw CASCADE` on every reseed, which destroyed co-packer tables that lived in `raw`. Moving them to a dedicated `copack` schema means platform reseeds no longer wipe S&OP data. The app's `search_path=copack,raw,public` resolves co-packer tables first, platform tables fall through to `raw`.
+- **Scope:** `app/db.py` pool options, `db/seed_copack.py` schema creation. All application SQL in this project.
+- **Do not:** Put co-packer tables back in `raw`. Do not prefix table names with schema in application SQL — let the search path resolve it.
 
 ---
 
