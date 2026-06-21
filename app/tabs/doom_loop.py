@@ -49,32 +49,31 @@ def layout() -> html.Div:
 
         html.Div([
             html.P(
-                "Specialty food brands that depend on co-packers plan production "
-                "reactively. Demand forecasts drive reorder decisions, and reorder "
-                "decisions set the buffer between the brand and its shelf.",
+                "The most expensive stockout is the one nobody notices.",
                 style=_prose_style(),
             ),
             html.P(
-                "When a store stocks out it does not record a zero — it simply goes "
-                "dark, and that week leaves no row in the point-of-sale data. "
-                "Velocity is computed over the stores still selling, so the gap is "
-                "invisible. Spread across roughly a tenth of stores, week after "
-                "week, it quietly understates true demand.",
+                "A dramatic shelf-clearing event — a recall, a weather disruption, "
+                "a viral TikTok run — gets attention and a response. But the slow "
+                "bleed is quieter: a handful of stores go dark each week, scattered "
+                "across the network, none individually alarming. No buyer flags it. "
+                "No replenishment signal fires. The POS data simply records slightly "
+                "fewer units than the shelf could have moved, and the demand signal "
+                "entering the forecast pipeline arrives understated.",
                 style=_prose_style(),
             ),
             html.P(
-                "The understated demand becomes the forecast. The conservative "
-                "forecast sizes a smaller reorder. The smaller reorder shortens the "
-                "buffer, so more stores go dark — and the retailer's on-shelf-"
-                "availability scorecard slips, putting the brand's authorization at "
-                "risk. Each turn of the loop tightens it.",
+                "That understated signal compounds. A forecast built on suppressed "
+                "velocity projects conservative demand. Conservative demand drives "
+                "conservative replenishment. Conservative replenishment leaves the "
+                "same stores understocked the following week. The loop feeds itself, "
+                "and each pass through the cycle widens the gap between what the data "
+                "says happened and what would have happened at full distribution.",
                 style=_prose_style(),
             ),
             html.P(
-                "The fix is not a better forecast algorithm. It is correcting the "
-                "data before forecasting. Out-of-stock weeks carry no demand signal — "
-                "they carry silence. Replacing that silence with a credible estimate "
-                "of true demand breaks the loop.",
+                "This is the doom loop: not a crisis, but a slow leak in the demand "
+                "signal that the standard planning process mistakes for the truth.",
                 style={
                     **_prose_style(),
                     "borderLeft": f"3px solid {TEAL}",
@@ -160,10 +159,12 @@ def _build_hero_section() -> tuple[str, str, html.Div, html.Div]:
         if not pm.empty and _HERO_SKU in pm["sku"].values:
             name = str(pm.loc[pm["sku"] == _HERO_SKU, "product_name"].iloc[0])
 
-        title = f"The Hidden-Demand Case: {name}"
+        title = f"{_HERO_SKU} · {name}"
         subtitle = (
-            f"{_HERO_SKU} across the retail network — "
-            f"{n_weeks} weeks, {window_start} to {window_end}."
+            f"{n_weeks} weeks of scan data across the retail network. "
+            f"The chart below shows how many authorized stores recorded "
+            f"zero sales each week — not because demand disappeared, but "
+            f"because product wasn't on the shelf to sell."
         )
         fig = _build_dark_weeks_chart(wk.index, wk["dark"], cum_hidden)
         cards = _build_hero_cards(
@@ -242,13 +243,33 @@ def _build_hero_cards(
         ], style={"display": "flex", "flexWrap": "wrap", "gap": "16px",
                   "marginBottom": "16px"}),
         html.P(
-            f"No single week looks like a crisis — the worst undercounts velocity "
-            f"by {peak_under:.1f}%. But the leakage never stops: stores go dark in "
-            f"{weeks_dark} of {n_weeks} weeks, hiding {hidden_units:,.0f} units of "
-            f"demand from the forecast. The brand plans to the suppressed number, "
-            f"underorders, and the next stockout is already booked. Correcting the "
-            f"out-of-stock weeks before forecasting is what breaks the cycle.",
+            f"Over {n_weeks} weeks, roughly one in ten authorized stores went dark "
+            f"in any given week for this SKU — persistent, not episodic. That "
+            f"pattern hid an estimated {hidden_units:,.0f} units of real demand, a "
+            f"quiet ~{avg_under:.0f}% understatement of true velocity that peaked "
+            f"at ~{peak_under:.0f}% during the worst weeks.",
             style={**_prose_style(), "marginTop": "0"},
+        ),
+        html.P(
+            "The aggregate number is modest. The damage is not. A 5% velocity "
+            "understatement flows uncorrected through every downstream process "
+            "that trusts the POS signal: the demand forecast undershoots, the "
+            "replenishment order comes in light, and the next cycle of scan data "
+            "arrives suppressed again. Over four quarters the effect is not 5% "
+            "but 5% compounded — and it shows up not as a single write-off but "
+            "as a persistent drag on fill rate, a slow slide in retailer "
+            "scorecard performance, and eventually a buyer conversation that "
+            "starts with \"your turns don't justify the shelf space.\"",
+            style=_prose_style(),
+        ),
+        html.P(
+            "The correction this tool applies is straightforward: identify the "
+            "dark store-weeks, estimate the demand those stores would have "
+            "recorded at full availability, and feed the corrected signal into "
+            "the forecast. The arithmetic is simple. The insight is that without "
+            "it, the planning process treats a supply failure as a demand "
+            "signal — and plans accordingly.",
+            style=_prose_style(),
         ),
     ])
 
