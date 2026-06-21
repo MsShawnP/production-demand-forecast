@@ -348,9 +348,12 @@ def verify(conn) -> None:
 
 
 if __name__ == "__main__":
-    conn = psycopg2.connect(DATABASE_URL, options="-c search_path=raw,public")
+    conn = psycopg2.connect(DATABASE_URL, options="-c search_path=copack,raw,public")
     conn.autocommit = False
     try:
+        cur = conn.cursor()
+        cur.execute("CREATE SCHEMA IF NOT EXISTS copack")
+        conn.commit()
         seed(conn)
         verify(conn)
     except Exception:
