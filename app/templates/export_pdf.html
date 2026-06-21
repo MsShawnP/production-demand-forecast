@@ -136,16 +136,18 @@
 <!-- Doom loop narrative -->
 <h2>The Demand Correction</h2>
 <div class="narrative">
-  <p>Specialty food brands that depend on co-packers plan production reactively.
-     When a stockout happens, the weeks of zero sales suppress the trailing velocity average.
-     The suppressed average becomes the next forecast, which produces a smaller reorder,
-     which shortens the buffer, which makes the next stockout more likely.</p>
-  <p>The fix is correcting the data before forecasting. Out-of-stock weeks carry no demand
-     signal &mdash; they carry silence. Replacing that silence with a rolling-median baseline
-     adjusted for seasonality breaks the loop.</p>
-  <p class="pull-quote">The corrected demand estimate raises the replenishment signal and
-     produces an earlier decision deadline. Without correction, the brand plans to the
-     suppressed number and repeats the cycle.</p>
+  <p>The most expensive stockout is the one nobody notices.</p>
+  <p>When a store stocks out it does not record a zero &mdash; it simply goes dark, and that
+     week leaves no row in the point-of-sale data. Velocity is computed over the stores still
+     selling, so the gap is invisible. Spread across roughly a tenth of stores, week after
+     week, it quietly understates true demand.</p>
+  <p>The understated demand becomes the forecast. The conservative forecast sizes a smaller
+     reorder. The smaller reorder shortens the buffer, so more stores go dark &mdash; and the
+     retailer&rsquo;s on-shelf-availability scorecard slips, putting the brand&rsquo;s
+     authorization at risk. Each turn of the loop tightens it.</p>
+  <p class="pull-quote">Out-of-stock weeks carry no demand signal &mdash; they carry silence.
+     The fix is not a better forecast algorithm. It is correcting the silence before it enters
+     the forecast.</p>
 </div>
 
 <!-- Hero case chart (SVG if available, placeholder if not) -->
