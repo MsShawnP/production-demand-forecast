@@ -125,10 +125,22 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
     or view consumes it.
     """
     from app.db import get_conn
-    # Two static SQL strings — no f-string interpolation — so structural parts
-    # are never user-influenced even if the call signature changes in the future.
-    # The trailing-window lower bound is passed as a bound parameter, not interpolated.
+    # CTE pre-computes promo flags on distinct (sku, week_ending) pairs (~3,900)
+    # instead of a correlated EXISTS on every scan_data row (~840K). No f-string
+    # interpolation — all dynamic values are bound parameters.
     _SQL_ALL = """
+        WITH promo_flag AS (
+            SELECT DISTINCT sub.sku, sub.week_ending
+            FROM (
+                SELECT DISTINCT sku, week_ending
+                FROM scan_data
+                WHERE week_ending <= %(as_of)s
+                  AND week_ending >  %(history_start)s
+            ) sub
+            JOIN promotions p
+                ON p.sku = sub.sku
+                AND sub.week_ending BETWEEN p.start_week AND p.end_week
+        )
         SELECT
             s.sku,
             s.store_id,
@@ -142,23 +154,32 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
                 THEN TRUE
                 ELSE FALSE
             END                                             AS is_authorized,
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM promotions p
-                    WHERE p.sku = s.sku
-                      AND s.week_ending BETWEEN p.start_week AND p.end_week
-                ) THEN TRUE
-                ELSE FALSE
+            CASE WHEN pf.sku IS NOT NULL THEN TRUE
+                 ELSE FALSE
             END                                             AS is_promo
         FROM scan_data s
         LEFT JOIN distribution_log d
             ON d.sku = s.sku AND d.store_id = s.store_id
+        LEFT JOIN promo_flag pf
+            ON pf.sku = s.sku AND pf.week_ending = s.week_ending
         WHERE s.week_ending <= %(as_of)s
           AND s.week_ending >  %(history_start)s
         ORDER BY s.sku, s.store_id, s.week_ending
     """
     _SQL_SKU = """
+        WITH promo_flag AS (
+            SELECT DISTINCT sub.sku, sub.week_ending
+            FROM (
+                SELECT DISTINCT sku, week_ending
+                FROM scan_data
+                WHERE sku = %(sku)s
+                  AND week_ending <= %(as_of)s
+                  AND week_ending >  %(history_start)s
+            ) sub
+            JOIN promotions p
+                ON p.sku = sub.sku
+                AND sub.week_ending BETWEEN p.start_week AND p.end_week
+        )
         SELECT
             s.sku,
             s.store_id,
@@ -172,18 +193,14 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
                 THEN TRUE
                 ELSE FALSE
             END                                             AS is_authorized,
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM promotions p
-                    WHERE p.sku = s.sku
-                      AND s.week_ending BETWEEN p.start_week AND p.end_week
-                ) THEN TRUE
-                ELSE FALSE
+            CASE WHEN pf.sku IS NOT NULL THEN TRUE
+                 ELSE FALSE
             END                                             AS is_promo
         FROM scan_data s
         LEFT JOIN distribution_log d
             ON d.sku = s.sku AND d.store_id = s.store_id
+        LEFT JOIN promo_flag pf
+            ON pf.sku = s.sku AND pf.week_ending = s.week_ending
         WHERE s.sku = %(sku)s
           AND s.week_ending <= %(as_of)s
           AND s.week_ending >  %(history_start)s
@@ -200,7 +217,10 @@ def get_scan_data(sku: str | None = None) -> pd.DataFrame:
             sql = _SQL_ALL
             params = {"as_of": _DEMO_AS_OF_DATE, "history_start": history_start}
         with get_conn() as conn:
-            return pd.read_sql(sql, conn, params=params)
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            cols = [desc[0] for desc in cur.description]
+            return pd.DataFrame(cur.fetchall(), columns=cols)
     except Exception:
         logger.exception("get_scan_data failed")
         return pd.DataFrame()
