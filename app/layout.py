@@ -17,9 +17,6 @@ def create_layout() -> html.Div:
         children=[
             dcc.Store(id="scenario-params", data={}),
 
-            # Global time-period selector
-            _time_period_bar(),
-
             # Tabs
             dcc.Tabs(
                 id="main-tabs",
@@ -51,39 +48,6 @@ def create_layout() -> html.Div:
                 ],
             ),
         ],
-    )
-
-
-def _time_period_bar() -> html.Div:
-    return html.Div(
-        [
-            html.Span("Period:", style={
-                "fontFamily": FONT_SANS, "fontSize": "13px", "fontWeight": "600",
-                "color": TEXT_SEC, "marginRight": "12px",
-            }),
-            dcc.RadioItems(
-                id="time-period-selector",
-                options=[
-                    {"label": "Full History", "value": "full"},
-                    {"label": "Last 12 Months", "value": "12m"},
-                    {"label": "Last 6 Months", "value": "6m"},
-                    {"label": "Last 3 Months", "value": "3m"},
-                ],
-                value="full",
-                inline=True,
-                inputStyle={"marginRight": "4px"},
-                labelStyle={
-                    "fontFamily": FONT_SANS, "fontSize": "13px",
-                    "marginRight": "16px", "cursor": "pointer",
-                    "color": TEXT_SEC,
-                },
-            ),
-        ],
-        style={
-            "padding": "10px 24px",
-            "display": "flex",
-            "alignItems": "center",
-        },
     )
 
 

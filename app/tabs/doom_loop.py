@@ -24,7 +24,7 @@ from app.charts import base_chart_layout
 from app.components import dark_card, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
-    SG_ORANGE, TEXT, TEXT_SEC, TEAL, TOKYO_ROSE,
+    SG_ORANGE, TEXT, TEXT_SEC, TEAL,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,36 @@ def layout() -> html.Div:
                 },
             ),
         ], style={"marginBottom": "40px"}),
+
+        # ── Period selector (Doom Loop only) ──────────────────────────────
+        html.Div([
+            html.Span("Period:", style={
+                "fontFamily": FONT_SANS, "fontSize": "13px", "fontWeight": "600",
+                "color": TEXT_SEC, "marginRight": "12px",
+            }),
+            dcc.RadioItems(
+                id="time-period-selector",
+                options=[
+                    {"label": "Full History", "value": "full"},
+                    {"label": "Last 12 Months", "value": "12m"},
+                    {"label": "Last 6 Months", "value": "6m"},
+                    {"label": "Last 3 Months", "value": "3m"},
+                ],
+                value="full",
+                inline=True,
+                inputStyle={"marginRight": "4px"},
+                labelStyle={
+                    "fontFamily": FONT_SANS, "fontSize": "13px",
+                    "marginRight": "16px", "cursor": "pointer",
+                    "color": TEXT_SEC,
+                },
+            ),
+        ], style={
+            "padding": "10px 0",
+            "display": "flex",
+            "alignItems": "center",
+            "marginBottom": "16px",
+        }),
 
         # ── Section 2: Hero case (callback-driven) ────────────────────────
         dcc.Loading(
