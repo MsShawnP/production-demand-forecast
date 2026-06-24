@@ -54,11 +54,18 @@ register_callbacks(app)
 
 
 def _prewarm_cache():
-    """Pre-warm the forecast cache so the first visitor gets a cached response."""
+    """Pre-warm all cached queries so the first visitor gets a sub-second response.
+
+    get_sop_summary() cascades through get_forecast → get_true_demand →
+    get_scan_data, plus get_sku_inventory, get_production_schedule, and
+    get_sku_config. One call warms every data function the S&OP view needs.
+    get_product_master is warmed separately for the Doom Loop tab.
+    """
     with server.app_context():
         try:
-            from app.data import get_forecast
-            get_forecast()
+            from app.data import get_product_master, get_sop_summary
+            get_sop_summary()
+            get_product_master()
             logger.info("Cache pre-warm complete")
         except Exception:
             logger.exception("Cache pre-warm failed — first request will be slow")
