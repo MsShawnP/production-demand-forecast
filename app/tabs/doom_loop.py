@@ -18,7 +18,7 @@ import logging
 
 import pandas as pd
 import plotly.graph_objects as go
-from dash import dcc, html
+from dash import Input, Output, dcc, html
 
 from app.charts import base_chart_layout
 from app.components import dark_card, loading_spinner
@@ -34,16 +34,12 @@ TAB_ID = "tab-doom-loop"
 # scan data (dark in 76 of 78 weeks, the largest hidden-demand total). Stores
 # span six retailers, so the story is "across the retail network", not one chain.
 _HERO_SKU = "CHP-PS-008"
+_PERIOD_WEEKS = {"full": None, "12m": 52, "6m": 26, "3m": 13}
 
 
 def layout() -> html.Div:
-    hero_title, hero_subtitle, hero_chart, hero_cards = _build_hero_section()
-
     return html.Div([
-        dcc.Loading(
-            custom_spinner=loading_spinner("Loading analysis…"),
-            children=[
-        # ── Section 1: Narrative ───────────────────────────────────────────
+        # ── Section 1: Narrative (static) ─────────────────────────────────
         html.H2(
             "The Doom Loop",
             style={"fontFamily": FONT_SERIF, "fontWeight": "700",
@@ -84,33 +80,39 @@ def layout() -> html.Div:
             ),
         ], style={"marginBottom": "40px"}),
 
-        # ── Section 2: Hero case ───────────────────────────────────────────
-        html.H2(
-            hero_title,
-            style={"fontFamily": FONT_SERIF, "fontWeight": "700",
-                   "fontSize": "22px", "marginBottom": "4px", "color": INK},
-        ),
-        html.P(
-            hero_subtitle,
-            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px"},
-        ),
-
-        hero_chart,
-        hero_cards,
-            ],
+        # ── Section 2: Hero case (callback-driven) ────────────────────────
+        dcc.Loading(
+            custom_spinner=loading_spinner("Loading analysis…"),
+            children=html.Div(id="doom-loop-hero"),
         ),
     ], style={"padding": "24px"})
 
 
 def register_callbacks(app) -> None:
-    pass  # Layout is static (data loaded at render time, not via callbacks)
+    @app.callback(
+        Output("doom-loop-hero", "children"),
+        Input("time-period-selector", "value"),
+    )
+    def update_hero(period):
+        title, subtitle, chart, cards = _build_hero_section(period=period)
+        return [
+            html.H2(title, style={
+                "fontFamily": FONT_SERIF, "fontWeight": "700",
+                "fontSize": "22px", "marginBottom": "4px", "color": INK,
+            }),
+            html.P(subtitle, style={
+                "fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px",
+            }),
+            chart,
+            cards,
+        ]
 
 
 # ---------------------------------------------------------------------------
 # Private: hero case section builder
 # ---------------------------------------------------------------------------
 
-def _build_hero_section() -> tuple[str, str, html.Div, html.Div]:
+def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.Div]:
     """Build the reframed hero: title, subtitle, dark-store-weeks chart, cards.
 
     All figures come from the gap-based OOS computation for the hero SKU.
@@ -118,7 +120,7 @@ def _build_hero_section() -> tuple[str, str, html.Div, html.Div]:
     """
     fallback_title = "The Hidden-Demand Case"
     try:
-        from app.data import get_product_master, get_true_demand
+        from app.data import _DEMO_AS_OF_DATE, get_product_master, get_true_demand
 
         td = get_true_demand(sku=_HERO_SKU)
         if td.empty or "is_oos" not in td.columns or not bool(td["is_oos"].any()):
@@ -126,6 +128,13 @@ def _build_hero_section() -> tuple[str, str, html.Div, html.Div]:
 
         td = td.copy()
         td["week_ending"] = pd.to_datetime(td["week_ending"])
+
+        period_wks = _PERIOD_WEEKS.get(period)
+        if period_wks is not None:
+            cutoff = pd.Timestamp(_DEMO_AS_OF_DATE) - pd.Timedelta(weeks=period_wks)
+            td = td[td["week_ending"] >= cutoff]
+            if td.empty or not bool(td["is_oos"].any()):
+                return fallback_title, "", _fallback_chart(), html.Div()
 
         # Weekly aggregates: total observed vs corrected, count of dark stores
         wk = (
