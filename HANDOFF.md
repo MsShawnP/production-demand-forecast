@@ -121,6 +121,27 @@ ready. Stack TBD — to be decided during /clarify.
 
 ---
 
+## 2026-06-24 — Exec-readiness UX pass (Phase 2)
+
+**Started from:** Phase 1 performance/UX fixes deployed (loading spinners, SQL CTE optimization, cache pre-warm, page title). Column header truncation fix from Phase 1 didn't work — carried into this session.
+
+**Did:** Six fixes, one commit each, all pushed and deployed:
+
+1. `81d553d` — **Global time-period selector** (Full History / 12M / 6M / 3M) above tabs. Doom Loop hero chart filters by selected period via callback. S&OP and Scenario tabs see the selector but are forward-looking and unaffected. Period is relative to `_DEMO_AS_OF_DATE`.
+2. `9d6a5b9` — **S&OP table column fix** — dropped Line column, all decision columns use fixed `width`, Product gets `flex: 1` to fill remaining space. Headers no longer truncate at 1200px.
+3. `f534df7` — **KPI card height consistency** — Scenario Controls `_kpi_with_delta` always renders baseline annotation row (invisible spacer when delta is zero).
+4. `d70f1ff` — **Doom Loop chart fixes** — height 360→520px, right margin 70→90px, shortened y2 axis label, hovertemplate rounds to whole numbers.
+5. `b0f0776` — **PDF export cleanup** — SKU `white-space: nowrap`, `_fmt_date_pdf` handles NaT/None/NaN uniformly (→ "—"), `break-inside: avoid` on table rows.
+6. `71f0d25` — **Excel export cleanup** — `weekly_forecast_mean` rounded to int, dates written as `datetime.date` objects with `YYYY-MM-DD` format, NaT handling broadened.
+
+**Design note:** Time period selector is above the tab bar (not between tab bar and content) because Dash `dcc.Tabs` renders content inside the component — no slot between header and content. The selector is still global and persists across tab switches. The period only filters _display_ of historical data; the forecast always uses the full 78-week history window because STL(period=52) needs >= 52 weeks.
+
+**State:** Working tree clean. All pushed and deployed to https://cinderhaven-demand-forecast.fly.dev/. Next /improve due 2026-07-01.
+
+**Next:** Verify all six fixes on the live site. Potential follow-ups: (a) wire time-period selector to S&OP detail panel chart range, (b) remove Line column from PDF export table to match grid, (c) next /improve review on 2026-07-01.
+
+---
+
 ## 2026-06-20 — UX fixes, doom loop narrative, schema isolation
 
 **Started from:** App live, arc closed. Three UX issues + narrative polish + database wipe investigation.
