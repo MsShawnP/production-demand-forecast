@@ -35,19 +35,26 @@ from app.constants import (
 TAB_ID = "tab-sop"
 
 _COLUMN_DEFS = [
-    {"field": "sku",                "headerName": "SKU",               "minWidth": 100, "flex": 1, "pinned": "left"},
-    {"field": "product_name",       "headerName": "Product",           "minWidth": 140, "flex": 2},
-    {"field": "product_line",       "headerName": "Line",              "minWidth": 100, "flex": 2},
-    {"field": "weekly_forecast_mean", "headerName": "Fcst/wk",
-     "minWidth": 80, "flex": 1, "type": "numericColumn",
+    {"field": "sku",                "headerName": "SKU",           "minWidth": 90,  "flex": 1, "pinned": "left",
+     "headerTooltip": "SKU code"},
+    {"field": "product_name",       "headerName": "Product",       "minWidth": 130, "flex": 2,
+     "headerTooltip": "Product name"},
+    {"field": "product_line",       "headerName": "Line",          "minWidth": 80,  "flex": 1.5,
+     "headerTooltip": "Product line"},
+    {"field": "weekly_forecast_mean", "headerName": "Fcst/wk",     "minWidth": 85,  "flex": 1,
+     "type": "numericColumn", "headerTooltip": "Forecast units per week",
      "valueFormatter": {"function": "params.value ? params.value.toFixed(0) : '—'"}},
-    {"field": "stockout_week_label", "headerName": "Stockout",         "minWidth": 90, "flex": 1},
-    {"field": "deadline_label",     "headerName": "Decision By",       "minWidth": 90, "flex": 1},
-    {"field": "days_until_deadline", "headerName": "Days Left",
-     "minWidth": 70, "flex": 1, "type": "numericColumn",
+    {"field": "stockout_week_label", "headerName": "Stockout",     "minWidth": 100, "flex": 1,
+     "headerTooltip": "Projected stockout date"},
+    {"field": "deadline_label",     "headerName": "Decision By",   "minWidth": 115, "flex": 1,
+     "headerTooltip": "Last date to order production"},
+    {"field": "days_until_deadline", "headerName": "Days Left",    "minWidth": 90,  "flex": 1,
+     "type": "numericColumn", "headerTooltip": "Days until decision deadline",
      "valueFormatter": {"function": "params.value != null ? params.value : '—'"}},
-    {"field": "deadline_flag",      "headerName": "Flag",              "minWidth": 80, "flex": 1},
-    {"field": "conflict_label",     "headerName": "Conflict",          "minWidth": 90, "flex": 1},
+    {"field": "deadline_flag",      "headerName": "Flag",          "minWidth": 70,  "flex": 0.7,
+     "headerTooltip": "Urgency flag: PAST_DUE / CRITICAL / WARNING / OK"},
+    {"field": "conflict_label",     "headerName": "Conflict",      "minWidth": 90,  "flex": 1,
+     "headerTooltip": "Shared production line conflict"},
 ]
 
 _ROW_STYLE = {
