@@ -172,9 +172,10 @@ def detect_shared_line_conflicts(
     sop_df: pd.DataFrame,
     sku_config_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Flag SKUs with decision deadlines within 28 days of another SKU on the same line.
+    """Flag SKUs competing for the same production line right now.
 
-    Only SKUs with a non-None decision_deadline are considered.
+    Only PAST_DUE and CRITICAL SKUs are considered — WARNING SKUs have
+    runway and don't create immediate scheduling pressure.
     Adds columns: shared_line_conflict (bool), conflict_line_id (str),
     conflict_skus (list[str]).
     """
@@ -190,10 +191,10 @@ def detect_shared_line_conflicts(
         )
         sop["_line_id"] = sop["sku"].map(line_map)
 
-        # Only SKUs with a real (non-None) decision_deadline
-        has_deadline = sop[
-            sop["decision_deadline"].notna()
+        urgent = sop[
+            sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])
         ].copy()
+        has_deadline = urgent[urgent["decision_deadline"].notna()].copy()
 
         if has_deadline.empty:
             return sop.drop(columns=["_line_id"])
