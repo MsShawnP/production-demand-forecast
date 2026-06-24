@@ -199,24 +199,26 @@ def _build_dark_weeks_chart(weeks, dark_counts, cum_hidden) -> go.Figure:
         x=list(weeks), y=list(dark_counts),
         name="Authorized stores dark (OOS)",
         marker_color=SG_ORANGE, opacity=0.85,
+        hovertemplate="%{x|%b %d, %Y}<br>Stores dark: %{y:.0f}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=list(weeks), y=list(cum_hidden),
         name="Cumulative hidden demand (units)",
         yaxis="y2", mode="lines",
         line=dict(color=CHICAGO, width=2.5),
+        hovertemplate="%{x|%b %d, %Y}<br>Hidden demand: %{y:,.0f} units<extra></extra>",
     ))
 
     layout_cfg = base_chart_layout(
-        height=360,
+        height=520,
         y_title="Stores with no scan row",
         show_legend=True,
     )
     fig.update_layout(**layout_cfg)
     fig.update_layout(
-        margin=dict(l=10, r=70, t=30, b=50),
+        margin=dict(l=10, r=90, t=30, b=50),
         yaxis2=dict(
-            title="Cumulative hidden units",
+            title="Hidden units (cumul.)",
             overlaying="y", side="right", showgrid=False,
             tickfont=dict(family=FONT_SANS, size=12, color=TEXT_SEC),
             title_font=dict(family=FONT_SANS, size=13, color=TEXT_SEC),
