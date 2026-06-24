@@ -9,7 +9,7 @@ from dash import html
 
 from app.constants import (
     CARD_BG, CARD_BORDER, CARD_ITEM, CARD_MUTED, CARD_SEC, CARD_TEXT,
-    FONT_SANS, GREY_LIGHT, TEXT_SEC,
+    FONT_SANS, GREY_LIGHT, TEXT_SEC, CHICAGO,
 )
 
 
@@ -48,6 +48,17 @@ def dark_card(primary: str, secondary: str | None = None, muted: str | None = No
             "minWidth": "220px",
         },
     )
+
+
+def loading_spinner(message: str) -> html.Div:
+    """Spinner with text shown while callbacks are loading."""
+    return html.Div([
+        html.Div(className="ll-loading-spinner"),
+        html.P(message, style={
+            "fontFamily": FONT_SANS, "fontSize": "14px",
+            "color": TEXT_SEC, "textAlign": "center", "margin": "0",
+        }),
+    ], style={"textAlign": "center", "padding": "60px 0"})
 
 
 def kpi_chip(label: str, value: str, *, alert: bool = False) -> html.Div:

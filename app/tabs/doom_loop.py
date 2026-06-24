@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 from dash import dcc, html
 
 from app.charts import base_chart_layout
-from app.components import dark_card
+from app.components import dark_card, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
     SG_ORANGE, TEXT, TEXT_SEC, TEAL, TOKYO_ROSE,
@@ -40,6 +40,9 @@ def layout() -> html.Div:
     hero_title, hero_subtitle, hero_chart, hero_cards = _build_hero_section()
 
     return html.Div([
+        dcc.Loading(
+            custom_spinner=loading_spinner("Loading analysis…"),
+            children=[
         # ── Section 1: Narrative ───────────────────────────────────────────
         html.H2(
             "The Doom Loop",
@@ -94,7 +97,8 @@ def layout() -> html.Div:
 
         hero_chart,
         hero_cards,
-
+            ],
+        ),
     ], style={"padding": "24px"})
 
 

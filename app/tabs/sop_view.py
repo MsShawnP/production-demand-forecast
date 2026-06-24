@@ -25,7 +25,7 @@ import base64
 import dash_ag_grid as dag
 
 from app.charts import add_vline_at_date, base_chart_layout
-from app.components import empty_state, kpi_chip
+from app.components import empty_state, kpi_chip, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, DEADLINE_CRITICAL, DEADLINE_WARNING, FONT_SANS,
     FONT_SERIF, GREY_LIGHT, INK, SG_ORANGE, SURFACE_FAIL, SURFACE_PASS,
@@ -80,49 +80,47 @@ def layout() -> html.Div:
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px"},
         ),
 
-        # KPI chips row
-        html.Div(id="sop-kpi-row", style={"marginBottom": "20px"}),
-
-        # Scenario active indicator
-        html.Div(id="sop-scenario-chip",
-                 style={"marginBottom": "12px", "fontSize": "13px", "color": TEXT_SEC}),
-
-        # AG Grid table
-        dag.AgGrid(
-            id="sop-grid",
-            columnDefs=_COLUMN_DEFS,
-            rowData=[],
-            defaultColDef={
-                "sortable": True, "filter": True, "resizable": True,
-                "cellStyle": {"fontFamily": FONT_SANS, "fontSize": "13px"},
-            },
-            rowStyle=_ROW_STYLE,
-            style={"height": "420px", "width": "100%"},
-            dashGridOptions={
-                "rowSelection": "single",
-                "animateRows": True,
-            },
-            className="ag-theme-alpine",
+        dcc.Loading(
+            custom_spinner=loading_spinner("Calculating forecasts…"),
+            children=[
+                html.Div(id="sop-kpi-row", style={"marginBottom": "20px"}),
+                html.Div(id="sop-scenario-chip",
+                         style={"marginBottom": "12px", "fontSize": "13px",
+                                "color": TEXT_SEC}),
+                dag.AgGrid(
+                    id="sop-grid",
+                    columnDefs=_COLUMN_DEFS,
+                    rowData=[],
+                    defaultColDef={
+                        "sortable": True, "filter": True, "resizable": True,
+                        "cellStyle": {"fontFamily": FONT_SANS, "fontSize": "13px"},
+                    },
+                    rowStyle=_ROW_STYLE,
+                    style={"height": "420px", "width": "100%"},
+                    dashGridOptions={
+                        "rowSelection": "single",
+                        "animateRows": True,
+                    },
+                    className="ag-theme-alpine",
+                ),
+                html.Div([
+                    html.Button(
+                        "Download MPS Workbook (.xlsx)",
+                        id="sop-export-xlsx-btn",
+                        style=_btn_style(),
+                    ),
+                    html.Button(
+                        "Download Decision Brief (.pdf)",
+                        id="sop-export-pdf-btn",
+                        style={**_btn_style(), "marginLeft": "8px",
+                               "backgroundColor": TEXT_SEC},
+                    ),
+                    dcc.Download(id="sop-download-xlsx"),
+                    dcc.Download(id="sop-download-pdf"),
+                ], style={"marginTop": "16px", "marginBottom": "24px"}),
+                html.Div(id="sop-detail-panel"),
+            ],
         ),
-
-        # Export buttons
-        html.Div([
-            html.Button(
-                "Download MPS Workbook (.xlsx)",
-                id="sop-export-xlsx-btn",
-                style=_btn_style(),
-            ),
-            html.Button(
-                "Download Decision Brief (.pdf)",
-                id="sop-export-pdf-btn",
-                style={**_btn_style(), "marginLeft": "8px", "backgroundColor": TEXT_SEC},
-            ),
-            dcc.Download(id="sop-download-xlsx"),
-            dcc.Download(id="sop-download-pdf"),
-        ], style={"marginTop": "16px", "marginBottom": "24px"}),
-
-        # SKU detail panel (appears on row click)
-        html.Div(id="sop-detail-panel"),
 
     ], style={"padding": "24px"})
 

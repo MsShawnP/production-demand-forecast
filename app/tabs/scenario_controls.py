@@ -12,7 +12,7 @@ from __future__ import annotations
 import pandas as pd
 from dash import Input, Output, State, dcc, html, no_update
 
-from app.components import empty_state
+from app.components import empty_state, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
     SG_ORANGE, SURFACE_FAIL, SURFACE_WARN, TEAL, TEXT, TEXT_SEC, TOKYO_ROSE,
@@ -148,8 +148,12 @@ def layout() -> html.Div:
         html.Div(
             [
                 _controls_column(),
-                html.Div(
-                    id="scenario-results",
+                dcc.Loading(
+                    custom_spinner=loading_spinner("Running scenario…"),
+                    children=html.Div(
+                        id="scenario-results",
+                        style={"minWidth": "0"},
+                    ),
                     style={"flex": "1 1 auto", "minWidth": "0"},
                 ),
             ],

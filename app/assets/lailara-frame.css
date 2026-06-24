@@ -401,6 +401,21 @@
   }
 }
 
+/* ── Loading spinner ──────────────────────────────────────────────────────── */
+
+@keyframes ll-spin {
+    to { transform: rotate(360deg); }
+}
+.ll-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--ll-london-85);
+    border-top-color: var(--ll-chicago-20);
+    border-radius: 50%;
+    animation: ll-spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+
 /* ── Print safety ─────────────────────────────────────────────────────────── */
 
 @media print {
