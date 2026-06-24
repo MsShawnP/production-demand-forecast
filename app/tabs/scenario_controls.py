@@ -328,6 +328,11 @@ def _kpi_with_delta(label: str, value: int, baseline: int,
             style={"fontSize": "11px", "color": delta_color, "display": "block",
                    "marginTop": "4px", "fontWeight": "600"},
         ))
+    else:
+        children.append(html.Span(
+            " ",
+            style={"fontSize": "11px", "display": "block", "marginTop": "4px"},
+        ))
 
     return html.Div(
         children,
