@@ -48,6 +48,8 @@
   thead th { padding: 6pt 8pt; text-align: left; font-weight: 700; }
   tbody tr:nth-child(even) { background: #f9f9f9; }
   tbody td { padding: 5pt 8pt; vertical-align: top; border-bottom: 1px solid var(--grey-light); }
+  tbody td:first-child { white-space: nowrap; }
+  tbody tr { break-inside: avoid; }
   tr.past-due, tr.critical { background: var(--surface-fail) !important; }
   tr.warning { background: var(--surface-warn) !important; }
   tr.ok { background: var(--surface-pass) !important; }

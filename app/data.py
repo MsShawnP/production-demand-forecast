@@ -642,13 +642,15 @@ def export_sop_pdf(
 
 def _fmt_date_pdf(d) -> str:
     try:
-        if d is None or (isinstance(d, float) and pd.isna(d)):
+        if d is None or pd.isna(d):
             return "—"
         ts = pd.Timestamp(d)
-        # %-d is Linux-only. Use ts.day for cross-platform safety.
+        if pd.isna(ts):
+            return "—"
         return str(ts.day) + ts.strftime(" %b %Y")
     except Exception:
-        return str(d)[:10] if d else "—"
+        s = str(d) if d else ""
+        return "—" if not s or s == "NaT" else s[:10]
 
 
 # ---------------------------------------------------------------------------
