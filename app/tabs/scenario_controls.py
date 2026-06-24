@@ -139,8 +139,8 @@ def layout() -> html.Div:
                    "fontSize": "22px", "marginBottom": "4px", "color": INK},
         ),
         html.P(
-            "Model how changes to demand or production constraints affect stockout timing. "
-            "Adjust the inputs, then Apply — the impact appears on the right.",
+            "The baseline plan assumes current demand and current lead times. "
+            "Move the sliders to see what breaks when they don’t.",
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px"},
         ),
 

@@ -88,6 +88,7 @@ def layout() -> html.Div:
         dcc.Loading(
             custom_spinner=loading_spinner("Calculating forecasts…"),
             children=[
+                html.Div(id="sop-lead-text", style={"marginBottom": "20px"}),
                 html.Div(id="sop-kpi-row", style={"marginBottom": "20px"}),
                 html.Div(id="sop-scenario-chip",
                          style={"marginBottom": "12px", "fontSize": "13px",
@@ -136,6 +137,7 @@ def layout() -> html.Div:
 def register_callbacks(app) -> None:
 
     @app.callback(
+        Output("sop-lead-text", "children"),
         Output("sop-grid", "rowData"),
         Output("sop-kpi-row", "children"),
         Output("sop-scenario-chip", "children"),
@@ -155,7 +157,7 @@ def register_callbacks(app) -> None:
         )
 
         if sop.empty:
-            return [], empty_state("No S&OP data available."), ""
+            return "", [], empty_state("No S&OP data available."), ""
 
         # Prepare display columns
         sop = sop.copy()
@@ -176,10 +178,21 @@ def register_callbacks(app) -> None:
         need_action   = int(sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
         critical_conf = int(sop["shared_line_conflict"].sum())
         kpi_row = html.Div([
-            kpi_chip("Total SKUs", str(total_skus)),
-            kpi_chip("Need Action (≤ 28 days)", str(need_action), alert=need_action > 0),
-            kpi_chip("Critical Conflicts", str(critical_conf), alert=critical_conf > 0),
+            kpi_chip("SKUs in the plan", str(total_skus)),
+            kpi_chip("Need a production order now", str(need_action), alert=need_action > 0),
+            kpi_chip("Competing for the same line", str(critical_conf), alert=critical_conf > 0),
         ])
+
+        lead_text = html.P(
+            f"Of {total_skus} SKUs in the plan, {need_action} will stock out "
+            f"unless a production run is placed — and for most, the ordering "
+            f"window has already closed. {critical_conf} of those {need_action} "
+            f"share a co-packer production line. You cannot run them all at once: "
+            f"scheduling one pushes the others back. The table is sorted by "
+            f"urgency. Negative days mean the deadline has passed.",
+            style={"fontFamily": FONT_SANS, "fontSize": "15px",
+                   "lineHeight": "1.6", "color": TEXT_SEC},
+        )
 
         # Scenario chip
         if promo_lift_pct > 0 or new_doors > 0 or lead_time_slip > 0:
@@ -194,7 +207,7 @@ def register_callbacks(app) -> None:
         else:
             chip_text = "Scenario: Baseline"
 
-        return row_data, kpi_row, chip_text
+        return lead_text, row_data, kpi_row, chip_text
 
     @app.callback(
         Output("sop-download-xlsx", "data"),
