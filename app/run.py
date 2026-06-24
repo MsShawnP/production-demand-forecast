@@ -10,6 +10,7 @@ import logging
 import os
 import pathlib
 import secrets as _secrets
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
+    title="Production Demand Forecast — Cinderhaven",
 )
 server = app.server
 _secret_key = os.environ.get("FLASK_SECRET_KEY")
@@ -49,6 +51,20 @@ app.layout = wrap(
     footer_note="Data: Cinderhaven Provisions synthetic dataset.",
 )
 register_callbacks(app)
+
+
+def _prewarm_cache():
+    """Pre-warm the forecast cache so the first visitor gets a cached response."""
+    with server.app_context():
+        try:
+            from app.data import get_forecast
+            get_forecast()
+            logger.info("Cache pre-warm complete")
+        except Exception:
+            logger.exception("Cache pre-warm failed — first request will be slow")
+
+
+threading.Thread(target=_prewarm_cache, daemon=True).start()
 
 
 @server.after_request
