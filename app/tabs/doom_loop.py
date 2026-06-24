@@ -120,51 +120,24 @@ def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.
     """
     fallback_title = "The Hidden-Demand Case"
     try:
-        from app.data import _DEMO_AS_OF_DATE, get_product_master, get_true_demand
-
-        td = get_true_demand(sku=_HERO_SKU)
-        if td.empty or "is_oos" not in td.columns or not bool(td["is_oos"].any()):
-            return fallback_title, "", _fallback_chart(), html.Div()
-
-        td = td.copy()
-        td["week_ending"] = pd.to_datetime(td["week_ending"])
+        from app.data import get_doom_loop_weekly, get_product_master
 
         period_wks = _PERIOD_WEEKS.get(period)
-        if period_wks is not None:
-            cutoff = pd.Timestamp(_DEMO_AS_OF_DATE) - pd.Timedelta(weeks=period_wks)
-            td = td[td["week_ending"] >= cutoff]
-            if td.empty or not bool(td["is_oos"].any()):
-                return fallback_title, "", _fallback_chart(), html.Div()
+        wk = get_doom_loop_weekly(sku=_HERO_SKU, period_weeks=period_wks)
+        if wk.empty or not bool((wk["stores_dark"] > 0).any()):
+            return fallback_title, "", _fallback_chart(), html.Div()
 
-        # Weekly aggregates: total observed vs corrected, count of dark stores
-        wk = (
-            td.groupby("week_ending")
-            .agg(
-                observed=("units_sold", "sum"),
-                corrected=("true_demand", "sum"),
-                dark=("is_oos", "sum"),
-            )
-            .sort_index()
-        )
-        weekly_hidden = (
-            td[td["is_oos"]].groupby("week_ending")["true_demand"].sum()
-            .reindex(wk.index, fill_value=0.0)
-        )
-        cum_hidden = weekly_hidden.cumsum()
-
-        # Headline stats — all derived, none hardcoded
-        total_dark   = int(td["is_oos"].sum())
-        hidden_units = float(td.loc[td["is_oos"], "true_demand"].sum())
-        understate   = ((wk["corrected"] - wk["observed"])
-                        / wk["observed"].where(wk["observed"] > 0)) * 100
+        total_dark   = int(wk["stores_dark"].sum())
+        hidden_units = float(wk["weekly_hidden_units"].sum())
+        understate   = ((wk["corrected_units"] - wk["observed_units"])
+                        / wk["observed_units"].where(wk["observed_units"] > 0)) * 100
         avg_under    = float(understate.mean())
         peak_under   = float(understate.max())
-        weeks_dark   = int((wk["dark"] > 0).sum())
+        weeks_dark   = int((wk["stores_dark"] > 0).sum())
         n_weeks      = int(len(wk))
-        window_start = wk.index.min().strftime("%b %Y")
-        window_end   = wk.index.max().strftime("%b %Y")
+        window_start = wk["week_ending"].min().strftime("%b %Y")
+        window_end   = wk["week_ending"].max().strftime("%b %Y")
 
-        # Product name from the DB (do not invent one)
         name = _HERO_SKU
         pm = get_product_master()
         if not pm.empty and _HERO_SKU in pm["sku"].values:
@@ -175,7 +148,9 @@ def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.
             f"{_HERO_SKU} across the retail network — "
             f"{n_weeks} weeks, {window_start} to {window_end}."
         )
-        fig = _build_dark_weeks_chart(wk.index, wk["dark"], cum_hidden)
+        fig = _build_dark_weeks_chart(
+            wk["week_ending"], wk["stores_dark"], wk["cumulative_hidden_units"],
+        )
         cards = _build_hero_cards(
             hidden_units, total_dark, avg_under, peak_under, weeks_dark, n_weeks
         )

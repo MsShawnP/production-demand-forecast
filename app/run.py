@@ -56,17 +56,17 @@ register_callbacks(app)
 def _prewarm_cache():
     """Pre-warm all cached queries so the first visitor gets a sub-second response.
 
-    get_sop_summary() cascades through get_forecast → get_true_demand →
-    get_scan_data, plus get_sku_inventory, get_production_schedule, and
-    get_sku_config. One call warms every data function the S&OP view needs.
-    get_product_master is warmed separately for the Doom Loop tab.
+    In snapshot mode (default): reads ~50 rows from forecast_snapshot — sub-second.
+    In live mode (LIVE_COMPUTE=1): runs the full pipeline (~750K rows, STL ×50 SKUs).
     """
     with server.app_context():
         try:
-            from app.data import get_product_master, get_sop_summary
+            from app.data import _LIVE_COMPUTE, get_product_master, get_sop_summary
+            mode = "live computation" if _LIVE_COMPUTE else "snapshot tables"
+            logger.info("Pre-warming cache (%s)...", mode)
             get_sop_summary()
             get_product_master()
-            logger.info("Cache pre-warm complete")
+            logger.info("Cache pre-warm complete (%s)", mode)
         except Exception:
             logger.exception("Cache pre-warm failed — first request will be slow")
 

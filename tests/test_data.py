@@ -96,6 +96,8 @@ class TestGetSopSummaryPipeline:
         """Verify the pipeline calls the analytics functions correctly."""
         from app import data as data_module
 
+        monkeypatch.setattr(data_module, "_LIVE_COMPUTE", True)
+
         forecast = self._make_forecast(n_skus=3)
         inventory = self._make_inventory(n_skus=3, high=True)
         config = self._make_sku_config(n_skus=3)
@@ -117,6 +119,8 @@ class TestGetSopSummaryPipeline:
     def test_sop_returns_ok_when_inventory_is_high(self, monkeypatch):
         from app import data as data_module
 
+        monkeypatch.setattr(data_module, "_LIVE_COMPUTE", True)
+
         forecast = self._make_forecast(n_skus=2)
         inventory = self._make_inventory(n_skus=2, high=True)
         config = self._make_sku_config(n_skus=2)
@@ -135,6 +139,8 @@ class TestGetSopSummaryPipeline:
     def test_sop_returns_empty_when_forecast_empty(self, monkeypatch):
         from app import data as data_module
 
+        monkeypatch.setattr(data_module, "_LIVE_COMPUTE", True)
+
         monkeypatch.setattr(data_module, "get_forecast", lambda **kw: pd.DataFrame())
         monkeypatch.setattr(data_module, "get_sku_inventory", lambda: pd.DataFrame())
         monkeypatch.setattr(data_module, "get_production_schedule", lambda: pd.DataFrame())
@@ -147,6 +153,8 @@ class TestGetSopSummaryPipeline:
         """lead_time_slip_weeks should add to each SKU's lead_time_weeks."""
         from app import data as data_module
         from app.analytics.capacity import compute_decision_deadline
+
+        monkeypatch.setattr(data_module, "_LIVE_COMPUTE", True)
 
         captured_configs = []
 

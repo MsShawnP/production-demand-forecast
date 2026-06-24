@@ -47,6 +47,8 @@ _DEMAND_CACHE_TTL   = 3600        # 1 hour — stable demand data
 # OOS seasonal index, while cutting the load from ~1.34M rows to ~0.75M.
 _HISTORY_WEEKS = 78
 
+_LIVE_COMPUTE = os.environ.get("LIVE_COMPUTE", "").lower() in ("1", "true", "yes")
+
 
 def init_cache(server) -> None:
     cache_dir = os.environ.get("CACHE_DIR", "/cache")
@@ -334,6 +336,156 @@ def get_sku_config() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Snapshot readers (used when LIVE_COMPUTE is off — the default)
+# ---------------------------------------------------------------------------
+
+@cache.memoize(timeout=_DEMAND_CACHE_TTL)
+def _read_forecast_snapshot() -> pd.DataFrame:
+    from app.db import get_conn
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT sku, product_name, product_line, weekly_forecast_mean,
+                       current_inventory, stockout_date, decision_deadline,
+                       days_until_deadline, deadline_flag, lead_time_weeks,
+                       shared_line_conflict, conflict_skus, median_store_velocity
+                FROM copack.forecast_snapshot
+                ORDER BY sku
+            """)
+            cols = [desc[0] for desc in cur.description]
+            df = pd.DataFrame(cur.fetchall(), columns=cols)
+        df["stockout_date"] = pd.to_datetime(df["stockout_date"])
+        df["decision_deadline"] = pd.to_datetime(df["decision_deadline"])
+        df["conflict_skus"] = df["conflict_skus"].apply(
+            lambda x: x.split(",") if isinstance(x, str) and x else []
+        )
+        return df
+    except Exception:
+        logger.exception("_read_forecast_snapshot failed")
+        return pd.DataFrame()
+
+
+@cache.memoize(timeout=_DEMAND_CACHE_TTL)
+def _read_doom_loop_snapshot(sku: str) -> pd.DataFrame:
+    from app.db import get_conn
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT sku, week_ending, observed_units, corrected_units,
+                       stores_dark, weekly_hidden_units, cumulative_hidden_units
+                FROM copack.doom_loop_snapshot
+                WHERE sku = %(sku)s
+                ORDER BY week_ending
+            """, {"sku": sku})
+            cols = [desc[0] for desc in cur.description]
+            df = pd.DataFrame(cur.fetchall(), columns=cols)
+        if not df.empty:
+            df["week_ending"] = pd.to_datetime(df["week_ending"])
+        return df
+    except Exception:
+        logger.exception("_read_doom_loop_snapshot failed")
+        return pd.DataFrame()
+
+
+def _apply_scenario_to_snapshot(
+    snap: pd.DataFrame,
+    promo_lift_pct: float,
+    new_doors: int,
+    lead_time_slip_weeks: int,
+) -> pd.DataFrame:
+    """Adjust baseline snapshot values for scenario parameters.
+
+    Uses linear approximations: stockout dates scale proportionally with
+    the forecast change, decision deadlines shift by lead-time slip.
+    """
+    df = snap.copy()
+    as_of = pd.Timestamp(_DEMO_AS_OF_DATE)
+    baseline_forecast = df["weekly_forecast_mean"].copy()
+
+    if promo_lift_pct > 0:
+        df["weekly_forecast_mean"] *= (1 + promo_lift_pct)
+    if new_doors > 0:
+        df["weekly_forecast_mean"] += new_doors * df["median_store_velocity"].fillna(0)
+
+    has_stockout = df["stockout_date"].notna()
+    if has_stockout.any() and (promo_lift_pct > 0 or new_doors > 0):
+        original_days = (
+            df.loc[has_stockout, "stockout_date"] - as_of
+        ).dt.days.astype(float)
+        safe_forecast = df.loc[has_stockout, "weekly_forecast_mean"].replace(
+            0, float("nan")
+        )
+        ratio = baseline_forecast[has_stockout] / safe_forecast
+        adjusted_days = (original_days * ratio).round()
+        df.loc[has_stockout, "stockout_date"] = (
+            as_of + pd.to_timedelta(adjusted_days, unit="D")
+        )
+
+    lt = df["lead_time_weeks"].fillna(0).astype(float) + lead_time_slip_weeks
+    df["decision_deadline"] = pd.NaT
+    has_stockout = df["stockout_date"].notna()
+    if has_stockout.any():
+        df.loc[has_stockout, "decision_deadline"] = (
+            df.loc[has_stockout, "stockout_date"]
+            - pd.to_timedelta(lt[has_stockout] * 7, unit="D")
+        )
+
+    df["days_until_deadline"] = pd.array([pd.NA] * len(df), dtype="Int64")
+    has_deadline = df["decision_deadline"].notna()
+    if has_deadline.any():
+        df.loc[has_deadline, "days_until_deadline"] = (
+            (df.loc[has_deadline, "decision_deadline"] - as_of).dt.days
+        )
+
+    flags = []
+    for days in df["days_until_deadline"]:
+        if days is pd.NA or pd.isna(days):
+            flags.append("OK")
+        elif days < 0:
+            flags.append("PAST_DUE")
+        elif days < 14:
+            flags.append("CRITICAL")
+        elif days < 28:
+            flags.append("WARNING")
+        else:
+            flags.append("OK")
+    df["deadline_flag"] = flags
+
+    return df
+
+
+def _forecast_from_snapshot(
+    promo_lift_pct: float = 0.0, new_doors: int = 0
+) -> pd.DataFrame:
+    """Synthesize per-week forecast from snapshot baseline (flat line per SKU)."""
+    snap = _read_forecast_snapshot()
+    if snap.empty:
+        return pd.DataFrame()
+
+    forecast_from = pd.Timestamp(_DEMO_AS_OF_DATE)
+    rows = []
+    for _, sku_row in snap.iterrows():
+        fcst = float(sku_row["weekly_forecast_mean"])
+        if promo_lift_pct > 0:
+            fcst *= (1 + promo_lift_pct)
+        if new_doors > 0:
+            fcst += new_doors * float(sku_row.get("median_store_velocity", 0))
+
+        for week_offset in range(1, 13):
+            rows.append({
+                "sku": sku_row["sku"],
+                "week_ending": forecast_from + pd.Timedelta(weeks=week_offset),
+                "forecast_units": fcst,
+                "is_projected": True,
+                "forecast_method": "snapshot",
+            })
+
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
 # Scenario-keyed analytics queries
 # ---------------------------------------------------------------------------
 
@@ -347,6 +499,8 @@ def get_forecast(
     promo_lift_pct, new_doors, lead_time_slip_weeks = _clamp_scenario(
         promo_lift_pct, new_doors, lead_time_slip_weeks
     )
+    if not _LIVE_COMPUTE:
+        return _forecast_from_snapshot(promo_lift_pct, new_doors)
     true_demand = get_true_demand()
     if true_demand.empty:
         return pd.DataFrame()
@@ -378,6 +532,19 @@ def get_sop_summary(
     promo_lift_pct, new_doors, lead_time_slip_weeks = _clamp_scenario(
         promo_lift_pct, new_doors, lead_time_slip_weeks
     )
+    if not _LIVE_COMPUTE:
+        try:
+            snap = _read_forecast_snapshot()
+            if snap.empty:
+                return pd.DataFrame()
+            if promo_lift_pct > 0 or new_doors > 0 or lead_time_slip_weeks > 0:
+                return _apply_scenario_to_snapshot(
+                    snap, promo_lift_pct, new_doors, lead_time_slip_weeks
+                )
+            return snap
+        except Exception:
+            logger.exception("get_sop_summary (snapshot) failed")
+            return pd.DataFrame()
     try:
         forecast = get_forecast(promo_lift_pct=promo_lift_pct, new_doors=new_doors)
         inventory = get_sku_inventory()
@@ -430,6 +597,63 @@ def get_sop_summary(
     except Exception:
         logger.exception("get_sop_summary failed")
         return pd.DataFrame()
+
+
+# ---------------------------------------------------------------------------
+# Doom loop data
+# ---------------------------------------------------------------------------
+
+def get_doom_loop_weekly(
+    sku: str, period_weeks: int | None = None
+) -> pd.DataFrame:
+    """Weekly OOS/hidden-demand aggregates for a single SKU.
+
+    Returns columns: week_ending, observed_units, corrected_units,
+    stores_dark, weekly_hidden_units, cumulative_hidden_units.
+
+    period_weeks: if set, filter to trailing N weeks from _DEMO_AS_OF_DATE.
+    Cumulative hidden units are recomputed from the filtered window start.
+    """
+    if not _LIVE_COMPUTE:
+        df = _read_doom_loop_snapshot(sku)
+    else:
+        td = get_true_demand(sku=sku)
+        if td.empty or "is_oos" not in td.columns:
+            return pd.DataFrame()
+        td = td.copy()
+        td["week_ending"] = pd.to_datetime(td["week_ending"])
+
+        df = (
+            td.groupby("week_ending")
+            .agg(
+                observed_units=("units_sold", "sum"),
+                corrected_units=("true_demand", "sum"),
+                stores_dark=("is_oos", "sum"),
+            )
+            .reset_index()
+        )
+        wh = (
+            td[td["is_oos"]]
+            .groupby("week_ending")["true_demand"]
+            .sum()
+            .rename("weekly_hidden_units")
+            .reset_index()
+        )
+        df = df.merge(wh, on="week_ending", how="left")
+        df["weekly_hidden_units"] = df["weekly_hidden_units"].fillna(0.0)
+        df = df.sort_values("week_ending")
+        df["cumulative_hidden_units"] = df["weekly_hidden_units"].cumsum()
+
+    if df.empty:
+        return df
+
+    if period_weeks is not None:
+        cutoff = pd.Timestamp(_DEMO_AS_OF_DATE) - pd.Timedelta(weeks=period_weeks)
+        df = df[df["week_ending"] >= cutoff].copy()
+        if not df.empty:
+            df["cumulative_hidden_units"] = df["weekly_hidden_units"].cumsum()
+
+    return df
 
 
 # ---------------------------------------------------------------------------
