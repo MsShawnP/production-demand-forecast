@@ -245,18 +245,14 @@ def _build_results(sop, baseline, promo_lift_pct: float, new_doors: int,
 
     total_skus    = len(sop)
     need_action   = int(sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
-    critical_conf = int(
-        sop[sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
-    )
+    critical_conf = int(sop["shared_line_conflict"].sum())
 
     # Baseline metrics for delta comparison
     bl_need_action = 0
     bl_critical_conf = 0
     if not baseline.empty:
         bl_need_action = int(baseline["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
-        bl_critical_conf = int(
-            baseline[baseline["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
-        )
+        bl_critical_conf = int(baseline["shared_line_conflict"].sum())
 
     # Earliest stockouts — soonest decision deadlines first
     ranked = sop.copy()

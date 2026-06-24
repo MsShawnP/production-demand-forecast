@@ -814,7 +814,7 @@ def export_sop_pdf(
     total_skus       = len(sop_df)
     need_action      = int(sop_df["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
     critical_conf    = int(
-        sop_df[sop_df["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
+        sop_df["shared_line_conflict"].sum()
     ) if "shared_line_conflict" in sop_df.columns else 0
 
     # Build table rows for template

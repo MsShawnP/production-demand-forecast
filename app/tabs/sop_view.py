@@ -174,9 +174,7 @@ def register_callbacks(app) -> None:
         # KPI chips
         total_skus    = len(sop)
         need_action   = int(sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL", "WARNING"]).sum())
-        critical_conf = int(
-            sop[sop["deadline_flag"].isin(["PAST_DUE", "CRITICAL"])]["shared_line_conflict"].sum()
-        )
+        critical_conf = int(sop["shared_line_conflict"].sum())
         kpi_row = html.Div([
             kpi_chip("Total SKUs", str(total_skus)),
             kpi_chip("Need Action (≤ 28 days)", str(need_action), alert=need_action > 0),
