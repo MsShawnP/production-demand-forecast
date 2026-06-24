@@ -503,14 +503,18 @@ def export_sop_excel(
 
         for col_idx, (_, field) in enumerate(SHEET1_COLS, start=1):
             val = row.get(field)
-            if isinstance(val, (pd.Timestamp,)):
-                val = str(val.date()) if pd.notna(val) else None
-            elif val is None or (isinstance(val, float) and pd.isna(val)):
-                val = None
+            if isinstance(val, pd.Timestamp):
+                val = val.date() if pd.notna(val) else None
             elif isinstance(val, bool):
                 val = "Yes" if val else ""
+            elif val is None or (not isinstance(val, str) and pd.isna(val)):
+                val = None
+            if field == "weekly_forecast_mean" and isinstance(val, (int, float)):
+                val = int(round(val))
             cell = ws1.cell(row=row_idx, column=col_idx, value=val)
             cell.fill = row_fill
+            if isinstance(val, date):
+                cell.number_format = "YYYY-MM-DD"
 
     # Footer note
     note_row = len(sop_df) + 3
