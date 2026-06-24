@@ -1,0 +1,12 @@
+/* AG Grid header overrides — tighten padding so narrow columns
+   (55–90px) display full header text without truncation. */
+
+.ag-theme-alpine .ag-header-cell {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.ag-theme-alpine .ag-cell {
+  padding-left: 6px;
+  padding-right: 6px;
+}
