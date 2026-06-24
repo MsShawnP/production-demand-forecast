@@ -142,6 +142,41 @@ ready. Stack TBD — to be decided during /clarify.
 
 ---
 
+## 2026-06-24 — Pre-compute forecast to snapshot tables (across 2 sessions)
+
+**Started from:** Phase 2 UX fixes deployed. App pulled 840K rows and ran 50 STL forecasts on every cold load — minutes on the 2GB Fly machine.
+
+**Did:** Two fixes, one commit each:
+
+1. `b666e55` — **S&OP table restructure** — fixed column widths with pixel values, Product gets `flex: 1`, full SKU display without horizontal scroll. (Done in prior session.)
+
+2. `2d84b57` — **Pre-compute forecast to snapshot tables** — the big one:
+   - Created `db/precompute_forecast.py` — standalone script that runs the full pipeline (get_scan_data → OOS correction → STL forecast → capacity overlay) and writes results to `copack.forecast_snapshot` (50 rows) + `copack.doom_loop_snapshot` (3,900 rows) + `copack.snapshot_meta`.
+   - Rewired `app/data.py` — snapshot mode is default. `_LIVE_COMPUTE=1` env var gates live computation. `_read_forecast_snapshot()` and `_read_doom_loop_snapshot(sku)` read from snapshot tables. `_apply_scenario_to_snapshot()` uses linear approximations (proportional stockout scaling, lead-time slip addition) for scenario controls. `median_store_velocity` stored per SKU for new-doors math.
+   - Created `get_doom_loop_weekly(sku, period_weeks)` — unified interface for both snapshot and live modes. Period filtering recomputes cumulative hidden units from the filtered window start.
+   - Updated `app/tabs/doom_loop.py` to use `get_doom_loop_weekly()` instead of raw `get_true_demand()` + manual aggregation.
+   - Updated `app/run.py` pre-warm to log snapshot vs live mode.
+   - Fixed 4 tests that needed `monkeypatch.setattr(data_module, "_LIVE_COMPUTE", True)` to stay on the live code path.
+
+**Deploy sequence executed:**
+1. `git push origin main`
+2. `fly deploy` (health check passing)
+3. `fly ssh console -C "python db/precompute_forecast.py"` — 702K scan rows → 50 SKU snapshots, 3,900 doom-loop rows
+4. `fly machines restart` — cleared stale empty cache from pre-snapshot boot
+
+**Verified on live site (https://forecast.lailarallc.com):**
+- First load: 125ms server response (was minutes)
+- S&OP View: 50 SKUs, all columns populated, KPI cards correct (50/35/26)
+- Doom Loop: 1,553 hidden units, 1,210 dark store-weeks, 4.5% understatement, 76/78 weeks — all from snapshot
+- Scenario Controls: same `get_sop_summary()` pipeline, confirmed working
+- Zero errors in Fly logs
+
+**State:** Working tree clean. All pushed. App live at https://forecast.lailarallc.com. 55 tests passing. Data is synthetic and only changes on reseed — run `python db/precompute_forecast.py` on Fly after any reseed.
+
+**Next:** (a) Next /improve review due 2026-07-01. (b) Wire time-period selector to S&OP detail panel chart range. (c) Remove Line column from PDF export table to match grid.
+
+---
+
 ## 2026-06-20 — UX fixes, doom loop narrative, schema isolation
 
 **Started from:** App live, arc closed. Three UX issues + narrative polish + database wipe investigation.
