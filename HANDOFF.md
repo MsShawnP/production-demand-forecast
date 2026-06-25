@@ -207,3 +207,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** Push to origin. Deploy to Fly.io to get the schema fix and narrative updates live. Next /improve due 2026-07-01.
 
 ---
+
+## 2026-06-24 — Exec-readiness narrative polish and color audit
+
+**Started from:** Pre-compute forecast deployed. Continuing exec-readiness UX pass.
+
+**Did:** 8 commits — moved period selector into Doom Loop tab only, fixed S&OP third KPI card (two iterations), updated narrative copy for exec readiness, reordered tabs story-first (Doom Loop → S&OP → Scenario Controls), added co-packer production framing across all three tabs, full color audit (5 off-palette fixes), sharpened hero cards and closing paragraph. Pushed and deployed `669bc2d`; remaining 3 commits unpushed.
+
+**State:** Working tree clean. 3 commits ahead of origin. 55 tests passing. All narrative and color corrections complete.
+
+**Next:** Push 3 unpushed commits and deploy to Fly.io. Verify on live site. Next /improve due 2026-07-01.
+
+---
