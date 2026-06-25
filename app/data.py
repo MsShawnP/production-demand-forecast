@@ -679,7 +679,7 @@ def export_sop_excel(
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
 
-    from app.constants import CHICAGO, SURFACE_FAIL, SURFACE_WARN, TEAL
+    from app.constants import CHICAGO, SURFACE_FAIL, SURFACE_PASS, SURFACE_WARN, TEAL
 
     def _hex(color: str) -> str:
         return color.lstrip("#")
@@ -687,7 +687,7 @@ def export_sop_excel(
     NAVY_FILL   = PatternFill("solid", fgColor=_hex(CHICAGO))
     RED_FILL    = PatternFill("solid", fgColor=_hex(SURFACE_FAIL))
     ORANGE_FILL = PatternFill("solid", fgColor=_hex(SURFACE_WARN))
-    GREEN_FILL  = PatternFill("solid", fgColor=_hex("#e4f5f0"))
+    GREEN_FILL  = PatternFill("solid", fgColor=_hex(SURFACE_PASS))
     WHITE_FONT  = Font(name="Calibri", bold=True, color="FFFFFF")
     BOLD_FONT   = Font(name="Calibri", bold=True)
 

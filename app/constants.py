@@ -56,7 +56,7 @@ DEADLINE_OK       = TEAL        # > 28 days or no stockout
 # ============================================================
 # Deadline flag surface fills (backgrounds — never data bars)
 # ============================================================
-SURFACE_FAIL    = "#fde8e7"   # Red surface
+SURFACE_FAIL    = "#fce8e7"   # Red-95 surface
 SURFACE_WARN    = "#fdeee0"   # SG-95
 SURFACE_PASS    = "#e4f5f0"   # HK-95
 
