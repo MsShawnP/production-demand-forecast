@@ -219,3 +219,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** Push 3 unpushed commits and deploy to Fly.io. Verify on live site. Next /improve due 2026-07-01.
 
 ---
+
+## 2026-06-24 — Hero card single-row fix
+
+**Started from:** Prior session's wrap landed. 3 unpushed commits needed push + deploy.
+
+**Did:** Pushed and deployed prior commits. Fixed hero cards wrapping to two lines — `flexWrap: "nowrap"` on container, `flex: "1"` on each `dark_card`. Pushed, deployed, verified on live site.
+
+**State:** Working tree clean. All pushed and deployed. 55 tests passing. Hero cards confirmed in single row.
+
+**Next:** No immediate work queued. Next /improve due 2026-07-01.
+
+---
