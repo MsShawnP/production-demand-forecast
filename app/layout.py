@@ -25,7 +25,7 @@ def create_layout() -> html.Div:
                 colors={"border": GREY_LIGHT, "primary": CHICAGO, "background": CANVAS},
                 children=[
                     dcc.Tab(
-                        label="Doom Loop",
+                        label="The Problem",
                         value=doom_loop.TAB_ID,
                         children=doom_loop.layout(),
                         style=_tab_style(),

@@ -41,9 +41,14 @@ def layout() -> html.Div:
     return html.Div([
         # ── Section 1: Narrative (static) ─────────────────────────────────
         html.H2(
-            "The Doom Loop",
+            "The Demand Doom Loop",
             style={"fontFamily": FONT_SERIF, "fontWeight": "700",
-                   "fontSize": "22px", "marginBottom": "16px", "color": INK},
+                   "fontSize": "22px", "marginBottom": "4px", "color": INK},
+        ),
+        html.P(
+            "Why forecasts built on stockout-corrupted data guarantee the next stockout.",
+            style={"fontFamily": FONT_SANS, "fontSize": "14px",
+                   "color": TEXT_SEC, "marginBottom": "16px"},
         ),
 
         html.Div([
@@ -94,6 +99,9 @@ def layout() -> html.Div:
                 style=_prose_style(),
             ),
         ], style={"marginBottom": "40px"}),
+
+        html.Hr(style={"border": "none", "borderTop": "1px solid #999999",
+                        "margin": "40px 0"}),
 
         # ── Period selector (Doom Loop only) ──────────────────────────────
         html.Div([

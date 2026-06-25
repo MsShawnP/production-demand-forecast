@@ -31,7 +31,7 @@ app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
-    title="Production Demand Forecast — Cinderhaven",
+    title="Co-Packer Production Planner — Cinderhaven",
 )
 server = app.server
 _secret_key = os.environ.get("FLASK_SECRET_KEY")
@@ -47,7 +47,7 @@ init_cache(server)
 
 app.layout = wrap(
     create_layout(),
-    tool_name="Production Demand Forecast",
+    tool_name="CO-PACKER PRODUCTION PLANNER",
     footer_note="Data: Cinderhaven Provisions synthetic dataset.",
 )
 register_callbacks(app)

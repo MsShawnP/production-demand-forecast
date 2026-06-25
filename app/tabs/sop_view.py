@@ -179,7 +179,9 @@ def register_callbacks(app) -> None:
             lambda d: _format_date(d) if d is not None and pd.notna(d) else "—"
         )
         sop["conflict_label"] = sop.apply(
-            lambda r: "⚠ Shared Line" if r.get("shared_line_conflict") else "", axis=1
+            lambda r: f"⚠ {r.get('product_line', 'Shared Line')}"
+            if r.get("shared_line_conflict") else "",
+            axis=1,
         )
 
         row_data = sop.to_dict("records")

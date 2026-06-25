@@ -129,7 +129,7 @@
       <td>{{ row.deadline_label }}</td>
       <td>{{ row.days_left }}</td>
       <td>{{ row.deadline_flag }}</td>
-      <td>{% if row.shared_line_conflict %}<span class="conflict-badge">&#9888; Shared Line</span>{% endif %}</td>
+      <td>{% if row.shared_line_conflict %}<span class="conflict-badge">&#9888; {{ row.product_line }}</span>{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -150,6 +150,12 @@
   <p class="pull-quote">Out-of-stock weeks carry no demand signal &mdash; they carry silence.
      The fix is not a better forecast algorithm. It is correcting the silence before it enters
      the forecast.</p>
+  <p>For brands that outsource production to co-packers, the correction is not optional &mdash;
+     it is structural. A retailer can reorder next week. A brand on a co-packer line cannot.
+     Lead times run eight to twelve weeks. Lines are shared across customers. Minimum order
+     quantities are fixed. A forecast that understates demand by five per cent does not produce
+     a five per cent shortfall &mdash; it produces a missed production window, and the next
+     available slot is weeks away.</p>
 </div>
 
 <!-- Hero case chart (SVG if available, placeholder if not) -->

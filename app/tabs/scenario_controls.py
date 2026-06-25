@@ -317,9 +317,9 @@ def _build_results(sop, baseline, promo_lift_pct: float, new_doors: int,
         ))
 
     children.append(html.Div([
-        _kpi_with_delta("Total SKUs", total_skus, total_skus, higher_is_worse=False),
-        _kpi_with_delta("Need Action", need_action, bl_need_action, higher_is_worse=True),
-        _kpi_with_delta("Critical Conflicts", critical_conf, bl_critical_conf, higher_is_worse=True),
+        _kpi_with_delta("SKUs in the plan", total_skus, total_skus, higher_is_worse=False),
+        _kpi_with_delta("Need a production order now", need_action, bl_need_action, higher_is_worse=True),
+        _kpi_with_delta("Competing for the same line", critical_conf, bl_critical_conf, higher_is_worse=True),
     ], style={"marginBottom": "20px"}))
 
     children.append(html.H3(
