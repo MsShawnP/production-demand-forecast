@@ -17,13 +17,20 @@ def create_layout() -> html.Div:
         children=[
             dcc.Store(id="scenario-params", data={}),
 
-            # Tabs
+            # Tabs — story order: problem → data → stress-test
             dcc.Tabs(
                 id="main-tabs",
-                value=sop_view.TAB_ID,
+                value=doom_loop.TAB_ID,
                 style={"borderBottom": f"1px solid {GREY_LIGHT}"},
                 colors={"border": GREY_LIGHT, "primary": CHICAGO, "background": CANVAS},
                 children=[
+                    dcc.Tab(
+                        label="Doom Loop",
+                        value=doom_loop.TAB_ID,
+                        children=doom_loop.layout(),
+                        style=_tab_style(),
+                        selected_style=_tab_selected_style(),
+                    ),
                     dcc.Tab(
                         label="S&OP View",
                         value=sop_view.TAB_ID,
@@ -35,13 +42,6 @@ def create_layout() -> html.Div:
                         label="Scenario Controls",
                         value=scenario_controls.TAB_ID,
                         children=scenario_controls.layout(),
-                        style=_tab_style(),
-                        selected_style=_tab_selected_style(),
-                    ),
-                    dcc.Tab(
-                        label="Doom Loop",
-                        value=doom_loop.TAB_ID,
-                        children=doom_loop.layout(),
                         style=_tab_style(),
                         selected_style=_tab_selected_style(),
                     ),

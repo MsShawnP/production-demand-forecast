@@ -31,6 +31,13 @@ from app.constants import (
     FONT_SERIF, GREY_LIGHT, INK, SG_ORANGE, SURFACE_FAIL, SURFACE_PASS,
     SURFACE_WARN, TEXT_SEC, TEAL, TOKYO_ROSE,
 )
+from app.data import _DEMO_AS_OF_DATE
+
+_REVIEW_DATE_LABEL = (
+    pd.Timestamp(_DEMO_AS_OF_DATE).strftime("%B ")
+    + str(pd.Timestamp(_DEMO_AS_OF_DATE).day)
+    + pd.Timestamp(_DEMO_AS_OF_DATE).strftime(", %Y")
+)
 
 TAB_ID = "tab-sop"
 
@@ -82,7 +89,11 @@ def layout() -> html.Div:
         ),
         html.P(
             "Which SKUs stock out, when, and when is the last date to act.",
-            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px"},
+            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "8px"},
+        ),
+        html.P(
+            f"S&OP review, {_REVIEW_DATE_LABEL}. All deadlines relative to this date.",
+            style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "20px"},
         ),
 
         dcc.Loading(
@@ -374,8 +385,7 @@ def _build_detail_panel(row: dict, scenario: dict) -> html.Div:
 def _format_date(d) -> str:
     try:
         ts = pd.Timestamp(d)
-        # %-d is Linux-only (no-leading-zero). Use ts.day for cross-platform safety.
-        return ts.strftime("Wk %b ") + str(ts.day)
+        return ts.strftime("%b ") + str(ts.day) + ts.strftime(" '%y")
     except Exception:
         return str(d)[:10] if d else "—"
 

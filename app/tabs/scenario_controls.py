@@ -17,6 +17,13 @@ from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
     SG_ORANGE, SURFACE_FAIL, SURFACE_WARN, TEAL, TEXT, TEXT_SEC, TOKYO_ROSE,
 )
+from app.data import _DEMO_AS_OF_DATE
+
+_REVIEW_DATE_LABEL = (
+    pd.Timestamp(_DEMO_AS_OF_DATE).strftime("%B ")
+    + str(pd.Timestamp(_DEMO_AS_OF_DATE).day)
+    + pd.Timestamp(_DEMO_AS_OF_DATE).strftime(", %Y")
+)
 
 TAB_ID = "tab-scenario"
 
@@ -141,7 +148,11 @@ def layout() -> html.Div:
         html.P(
             "The baseline plan assumes current demand and current lead times. "
             "Move the sliders to see what breaks when they don’t.",
-            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "24px"},
+            style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "8px"},
+        ),
+        html.P(
+            f"S&OP review, {_REVIEW_DATE_LABEL}. All deadlines relative to this date.",
+            style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "24px"},
         ),
 
         # Two columns: controls (left) + live results (right)
