@@ -44,8 +44,8 @@ def dark_card(primary: str, secondary: str | None = None, muted: str | None = No
             "border": f"1px solid {CARD_BORDER}",
             "borderRadius": "2px",
             "padding": "16px 24px",
-            "display": "inline-block",
-            "minWidth": "220px",
+            "flex": "1",
+            "minWidth": "0",
         },
     )
 

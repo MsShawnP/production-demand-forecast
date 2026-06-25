@@ -268,7 +268,7 @@ def _build_hero_cards(
                 primary=f"{weeks_dark} of {n_weeks} weeks",
                 secondary="continuous stockout — not an event, a condition",
             ),
-        ], style={"display": "flex", "flexWrap": "wrap", "gap": "16px",
+        ], style={"display": "flex", "flexWrap": "nowrap", "gap": "16px",
                   "marginBottom": "16px"}),
         html.P(
             "No single week looks like a crisis. But the leakage never stops. "
