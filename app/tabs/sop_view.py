@@ -59,8 +59,16 @@ _COLUMN_DEFS = [
     {"field": "deadline_flag",      "headerName": "Flag",        "width": 85,
      "headerTooltip": "PAST_DUE / CRITICAL / WARNING / OK"},
     {"field": "conflict_label",     "headerName": "Conflict",    "width": 100,
-     "headerTooltip": "Shared production line conflict"},
+     "headerTooltip": "Shared line: AS=Artisan Sauces, DG=Dried Goods, PS=Pantry Staples, SB=Snack Bites, SC=Specialty Condiments"},
 ]
+
+_LINE_ABBREV = {
+    "Artisan Sauces": "AS",
+    "Dried Goods": "DG",
+    "Pantry Staples": "PS",
+    "Snack Bites": "SB",
+    "Specialty Condiments": "SC",
+}
 
 _ROW_STYLE = {
     "styleConditions": [
@@ -179,7 +187,7 @@ def register_callbacks(app) -> None:
             lambda d: _format_date(d) if d is not None and pd.notna(d) else "—"
         )
         sop["conflict_label"] = sop.apply(
-            lambda r: f"⚠ {r.get('product_line', 'Shared Line')}"
+            lambda r: f"⚠ {_LINE_ABBREV.get(r.get('product_line', ''), r.get('product_line', '?'))}"
             if r.get("shared_line_conflict") else "",
             axis=1,
         )

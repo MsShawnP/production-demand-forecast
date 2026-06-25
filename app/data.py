@@ -49,6 +49,14 @@ _HISTORY_WEEKS = 78
 
 _LIVE_COMPUTE = os.environ.get("LIVE_COMPUTE", "").lower() in ("1", "true", "yes")
 
+_LINE_ABBREV = {
+    "Artisan Sauces": "AS",
+    "Dried Goods": "DG",
+    "Pantry Staples": "PS",
+    "Snack Bites": "SB",
+    "Specialty Condiments": "SC",
+}
+
 
 def init_cache(server) -> None:
     cache_dir = os.environ.get("CACHE_DIR", "/cache")
@@ -840,6 +848,7 @@ def export_sop_pdf(
             "days_left":         str(int(days)) if days is not None and pd.notna(days) else "—",
             "deadline_flag":     flag,
             "shared_line_conflict": bool(row.get("shared_line_conflict", False)),
+            "line_abbrev":       _LINE_ABBREV.get(row.get("product_line", ""), row.get("product_line", "")),
             "css_class":         css_class,
         })
 

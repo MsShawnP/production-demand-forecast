@@ -129,7 +129,7 @@
       <td>{{ row.deadline_label }}</td>
       <td>{{ row.days_left }}</td>
       <td>{{ row.deadline_flag }}</td>
-      <td>{% if row.shared_line_conflict %}<span class="conflict-badge">&#9888; {{ row.product_line }}</span>{% endif %}</td>
+      <td>{% if row.shared_line_conflict %}<span class="conflict-badge">&#9888; {{ row.line_abbrev }}</span>{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
