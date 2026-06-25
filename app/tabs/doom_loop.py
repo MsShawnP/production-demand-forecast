@@ -78,6 +78,21 @@ def layout() -> html.Div:
                     "fontStyle": "italic",
                 },
             ),
+            html.P(
+                "For brands that outsource production to co-packers, the correction "
+                "is not optional — it is structural. A retailer can reorder next "
+                "week. A brand on a co-packer line cannot. Lead times run eight to "
+                "twelve weeks. Lines are shared across customers. Minimum order "
+                "quantities are fixed. A forecast that understates demand by five "
+                "per cent does not produce a five per cent shortfall — it produces "
+                "a missed production window, and the next available slot is weeks "
+                "away. This tool models that constraint. It corrects observed "
+                "velocity for out-of-stock silence, connects the corrected forecast "
+                "to co-packer lead times, and returns the one number an operations "
+                "lead actually needs: the last date a production run can be ordered "
+                "before the shelf goes empty.",
+                style=_prose_style(),
+            ),
         ], style={"marginBottom": "40px"}),
 
         # ── Period selector (Doom Loop only) ──────────────────────────────

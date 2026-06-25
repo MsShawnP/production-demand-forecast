@@ -61,7 +61,13 @@ def _controls_column() -> html.Div:
             html.Label("Promo demand lift (%)", style=_LABEL_STYLE),
             html.P(
                 "Raise the forecast for all SKUs by this percentage for the full 12-week window.",
-                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "8px"},
+                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "4px"},
+            ),
+            html.P(
+                "A promo that lands harder than planned cannot be backfilled next "
+                "week — the co-packer's line is already booked.",
+                style={"fontSize": "11px", "color": TEXT_SEC, "fontStyle": "italic",
+                       "marginBottom": "8px"},
             ),
             dcc.Slider(
                 id="scenario-promo-slider",
@@ -76,7 +82,13 @@ def _controls_column() -> html.Div:
             html.Label("New retailer doors launching in week 1", style=_LABEL_STYLE),
             html.P(
                 "Additional retail doors adds demand at the median per-store velocity.",
-                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "8px"},
+                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "4px"},
+            ),
+            html.P(
+                "New doors increase volume across the same production lines. "
+                "More demand, same capacity.",
+                style={"fontSize": "11px", "color": TEXT_SEC, "fontStyle": "italic",
+                       "marginBottom": "8px"},
             ),
             dcc.Input(
                 id="scenario-doors-input",
@@ -91,7 +103,13 @@ def _controls_column() -> html.Div:
             html.Label("Co-packer lead-time increase (weeks)", style=_LABEL_STYLE),
             html.P(
                 "Adds N weeks to every SKU's lead time — simulating a co-packer delay.",
-                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "8px"},
+                style={"fontSize": "12px", "color": TEXT_SEC, "marginBottom": "4px"},
+            ),
+            html.P(
+                "Your co-packer is behind schedule, retooling, or prioritising "
+                "another customer. The window to act shrinks for every SKU.",
+                style={"fontSize": "11px", "color": TEXT_SEC, "fontStyle": "italic",
+                       "marginBottom": "8px"},
             ),
             dcc.Slider(
                 id="scenario-leadtime-slider",
@@ -146,8 +164,10 @@ def layout() -> html.Div:
                    "fontSize": "22px", "marginBottom": "4px", "color": INK},
         ),
         html.P(
-            "The baseline plan assumes current demand and current lead times. "
-            "Move the sliders to see what breaks when they don’t.",
+            "Co-packer production is inflexible by design — shared lines, fixed "
+            "lead times, minimum order quantities. The baseline plan assumes "
+            "current demand and current constraints. Move the sliders to see how "
+            "fast the plan breaks when they shift.",
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "8px"},
         ),
         html.P(

@@ -194,16 +194,27 @@ def register_callbacks(app) -> None:
             kpi_chip("Competing for the same line", str(critical_conf), alert=critical_conf > 0),
         ])
 
-        lead_text = html.P(
-            f"Of {total_skus} SKUs in the plan, {need_action} will stock out "
-            f"unless a production run is placed — and for most, the ordering "
-            f"window has already closed. {critical_conf} of those {need_action} "
-            f"share a co-packer production line. You cannot run them all at once: "
-            f"scheduling one pushes the others back. The table is sorted by "
-            f"urgency. Negative days mean the deadline has passed.",
-            style={"fontFamily": FONT_SANS, "fontSize": "15px",
-                   "lineHeight": "1.6", "color": TEXT_SEC},
-        )
+        lead_text = html.Div([
+            html.P(
+                "Outsourcing production lowers fixed costs, but it replaces a "
+                "production problem with a planning problem. Every SKU below "
+                "depends on a co-packer with shared lines, fixed minimums, and "
+                "lead times that punish late decisions.",
+                style={"fontFamily": FONT_SANS, "fontSize": "15px",
+                       "lineHeight": "1.6", "color": TEXT_SEC,
+                       "marginBottom": "12px"},
+            ),
+            html.P(
+                f"Of {total_skus} SKUs in the plan, {need_action} will stock out "
+                f"unless a production run is placed — and for most, the ordering "
+                f"window has already closed. {critical_conf} of those {need_action} "
+                f"share a co-packer production line. You cannot run them all at once: "
+                f"scheduling one pushes the others back. The table is sorted by "
+                f"urgency. Negative days mean the deadline has passed.",
+                style={"fontFamily": FONT_SANS, "fontSize": "15px",
+                       "lineHeight": "1.6", "color": TEXT_SEC},
+            ),
+        ])
 
         # Scenario chip
         if promo_lift_pct > 0 or new_doors > 0 or lead_time_slip > 0:
