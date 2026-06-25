@@ -231,3 +231,15 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** No immediate work queued. Next /improve due 2026-07-01.
 
 ---
+
+## 2026-06-25 15:55 — Exec-readiness polish deployed and verified
+
+**Started from:** Hero card single-row fix deployed. Continuing exec-readiness UX pass.
+
+**Did:** Eight exec-readiness fixes in one commit (`d79fdd9`): hero card single-row, KPI label alignment, header tool name, tab title, Doom Loop visual separation, detail panel chart audit, PDF co-packer narrative, conflict column showing shared line. Follow-up fix (`2b23fcf`): abbreviated production line names to two-letter codes (AS/DG/PS/SB/SC) after full names truncated at 100px. Both deployed to Fly.io and verified on live site.
+
+**State:** Working tree clean. All pushed and deployed to https://forecast.lailarallc.com. 55 tests passing. Conflict column shows "⚠ AS" cleanly.
+
+**Next:** No immediate work queued. Next /improve due 2026-07-01.
+
+---
