@@ -258,29 +258,27 @@ def _build_hero_cards(
         html.Div([
             dark_card(
                 primary=f"{hidden_units:,.0f} units",
-                secondary=f"hidden across {total_dark:,} dark store-weeks",
-                muted="demand the raw POS signal never recorded",
+                secondary=f"demand the forecast never saw — one SKU, {n_weeks} weeks",
             ),
             dark_card(
-                primary=f"{avg_under:.1f}%",
-                secondary=f"average velocity understatement (peak {peak_under:.1f}%)",
-                muted="how much out-of-stocks suppress the forecast input",
+                primary=f"{peak_under:.1f}%",
+                secondary=f"peak velocity understatement — {avg_under:.1f}% average, compounding quarterly",
             ),
             dark_card(
                 primary=f"{weeks_dark} of {n_weeks} weeks",
-                secondary="had at least one authorized store dark",
-                muted="persistent leakage, not a single event",
+                secondary="continuous stockout — not an event, a condition",
             ),
         ], style={"display": "flex", "flexWrap": "wrap", "gap": "16px",
                   "marginBottom": "16px"}),
         html.P(
-            "No single week looks like a crisis. But the leakage never stops, "
-            "and a 5% velocity understatement does not stay at 5% — it compounds "
-            "through every downstream process that trusts the POS signal. Over "
-            "four quarters, the forecast undershoots, replenishment comes in "
-            "light, fill rate drifts, and the retailer scorecard conversation "
-            "shifts from \"let's grow distribution\" to \"your turns don't "
-            "justify the shelf space.\" The next stockout is already booked.",
+            "No single week looks like a crisis. But the leakage never stops. "
+            "An eleven per cent velocity understatement in the worst week does "
+            "not correct itself — it compounds through every downstream process "
+            "that trusts the POS signal. Over four quarters, the forecast "
+            "undershoots, replenishment comes in light, fill rate drifts, and "
+            "the retailer scorecard conversation shifts from \"let's grow "
+            "distribution\" to \"your turns don't justify the shelf space.\" "
+            "The next stockout is already booked.",
             style={**_prose_style(), "marginTop": "0"},
         ),
     ])
