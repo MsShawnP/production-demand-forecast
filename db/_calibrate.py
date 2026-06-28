@@ -66,7 +66,7 @@ _SCAN_SQL = """
 
 def main() -> None:
     url = os.environ["DATABASE_URL"]
-    conn = psycopg2.connect(url, options="-c search_path=raw,public", connect_timeout=15)
+    conn = psycopg2.connect(url, options="-c search_path=copack,raw,public", connect_timeout=15)
     conn.autocommit = True
     hs = str((pd.Timestamp(AS_OF) - pd.Timedelta(weeks=HISTORY_WEEKS)).date())
     scan = pd.read_sql(_SCAN_SQL, conn, params={"a": AS_OF, "h": hs})
