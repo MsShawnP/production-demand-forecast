@@ -47,5 +47,8 @@ Thumbs.db
 *.swp
 *.swo
 
+# Security - secret leak prevention
+*.pem
+
 # Claude Code internal
 .claude-project-url
