@@ -1,9 +1,6 @@
 # Production Demand Forecast
 
-A Lailara LLC portfolio piece demonstrating S&OP (Sales & Operations Planning) for specialty food
-brands using co-packers. The tool corrects POS velocity for out-of-stock periods, builds a 12-week
-rolling demand forecast by SKU, overlays co-packer capacity and lead-time constraints, and outputs
-a stockout date plus production decision deadline per SKU.
+S&OP for specialty food brands using co-packers: corrects POS velocity for out-of-stock periods, forecasts 12 weeks of demand per SKU, and turns co-packer lead times into a production decision deadline.
 
 **Narrative:** "You'll run out in week 9. The deadline was week 3."
 
@@ -11,26 +8,21 @@ a stockout date plus production decision deadline per SKU.
 
 ## What it does
 
-Most demand forecasts for co-packer-dependent brands are wrong for a structural reason: stockouts
-suppress observed velocity, and a forecast built on that suppressed data under-predicts demand,
-which guarantees the next stockout. This tool breaks that doom loop by correcting observed velocity
-for out-of-stock periods before forecasting, then connecting the forecast to co-packer lead times
-to produce actionable decision deadlines — not just projected demand.
+- **Corrects observed velocity for out-of-stock periods** using a seasonal index, so the forecast reflects true demand rather than suppressed sales
+- **Builds a 12-week rolling demand forecast by SKU** (STL decomposition)
+- **Overlays co-packer capacity and lead-time constraints** on the forecast
+- **Outputs a stockout date plus a production decision deadline per SKU** — the date by which a production order must be placed, not just the date the shelf goes empty
+- **Exports** to Excel (openpyxl) and PDF (WeasyPrint + Jinja2)
 
-## Data Contract
+## Why it matters
 
-**Cinderhaven canonical dataset:** 50 SKUs / 5 production lines / 6 retailers.
-**Scope:** This tool addresses production planning and demand forecasting for co-packer operations. It uses an S&OP subset of the full Cinderhaven dataset. Audits should not flag the narrower SKU/retailer scope as data drift.
+Most demand forecasts for co-packer-dependent brands are wrong for a structural reason: stockouts suppress observed velocity, and a forecast built on that suppressed data under-predicts demand, which guarantees the next stockout. This tool breaks that doom loop by correcting observed velocity before forecasting.
 
-## Stack
+The second failure mode is timing. A forecast that says "you'll run out in week 9" is useless if the co-packer needs six weeks of lead time — the real deadline was week 3. Connecting the forecast to production constraints converts a projection into a decision with a date on it, which is what a founder can actually act on.
 
-- **UI:** Python + Dash 3.x + Plotly + dash-ag-grid
-- **Analytics:** `app/analytics/` — OOS correction (seasonal index), rolling forecast (STL), capacity overlay
-- **Database:** Cinderhaven Data Platform (synthetic Postgres SSOT)
-- **Deployment:** Fly.io (python:3.13-slim, gunicorn 3 workers, 2 GB)
-- **Export:** Excel via openpyxl, PDF via WeasyPrint + Jinja2
+**Demonstration case:** the Artisan Sauce hero SKU (CHP-AS-001) shows a February 2025 out-of-stock event where observed velocity was ~4.2 units/store/week and true demand corrects to ~5.0 units/store/week (+18%). Demo is anchored to a reference date of 2025-11-01. Data is synthetic (Cinderhaven, a fictional specialty food brand).
 
-## How to run locally
+## Quick start
 
 ```bash
 # Install dependencies
@@ -52,58 +44,43 @@ python -m app.run
 
 The app runs at http://localhost:8050.
 
-## How to run tests
+Run the tests — 54 unit and integration tests covering the analytics pipeline (OOS correction, rolling forecast, capacity overlay) and the data query layer:
 
 ```bash
 pytest tests/
 ```
 
-54 unit and integration tests covering the analytics pipeline (OOS correction, rolling forecast,
-capacity overlay) and the data query layer.
+### Seeding the co-packer schema
 
-## How to deploy
+The Cinderhaven Postgres SSOT is read-only from this app except for the co-packer tables (`co_packers`, `production_lines`, `production_schedule`, `sku_production_config`, `sku_inventory`). Run `python db/seed_copack.py` once against any Cinderhaven database, and re-run it if the database is recreated.
+
+### Deploying
 
 ```bash
-# First-time setup
 fly launch --no-deploy
 fly secrets set DATABASE_URL="postgres://..." FLASK_SECRET_KEY="$(openssl rand -hex 32)"
 fly volumes create cache_vol --size 1 --region iad
-
-# Deploy
 fly deploy
-
-# Verify
 fly open /health
 ```
 
-After deploy, run `fly ssh console` and verify WeasyPrint works in the container:
+After deploy, `fly ssh console` and verify WeasyPrint works in the container: `python -c "import weasyprint; print('WeasyPrint OK')"`.
 
-```bash
-python -c "import weasyprint; print('WeasyPrint OK')"
-```
+## Tech stack
 
-## Seeding the co-packer schema
-
-The Cinderhaven Postgres SSOT is read-only from this app except for four co-packer tables
-(`co_packers`, `production_lines`, `production_schedule`, `sku_production_config`, `sku_inventory`).
-Run the seeding script once against any Cinderhaven database:
-
-```bash
-python db/seed_copack.py
-```
-
-If the Cinderhaven Postgres is recreated, re-run the seeding script before starting the app.
+- **UI:** Python + Dash 3.x + Plotly + dash-ag-grid
+- **Analytics:** `app/analytics/` — OOS correction (seasonal index), rolling forecast (STL), capacity overlay
+- **Database:** Cinderhaven Data Platform (synthetic Postgres SSOT)
+- **Export:** Excel via openpyxl, PDF via WeasyPrint + Jinja2
+- **Deployment:** Fly.io (python:3.13-slim, gunicorn, 2 GB)
 
 ## Data contract
 
-Canonical Cinderhaven conformance — 50 SKUs across 5 product lines and 6 contracted retailers.
+Canonical Cinderhaven conformance — 50 SKUs across 5 product lines and 6 contracted retailers. This tool uses an S&OP subset of the full Cinderhaven dataset; the narrower SKU/retailer scope is intentional, not data drift.
 
-## Case study
+## License
 
-Uses Cinderhaven (a synthetic specialty food brand) as the demonstration case. Data is synthetic.
-The demo is anchored to a reference date of 2025-11-01. The Artisan Sauce hero SKU (CHP-AS-001)
-shows a February 2025 out-of-stock event where observed velocity was ~4.2 units/store/week
-and true demand corrects to ~5.0 units/store/week (+18%).
+MIT — see [LICENSE](LICENSE).
 
 ---
 
