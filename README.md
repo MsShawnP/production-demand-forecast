@@ -20,7 +20,7 @@ Most demand forecasts for co-packer-dependent brands are wrong for a structural 
 
 The second failure mode is timing. A forecast that says "you'll run out in week 9" is useless if the co-packer needs six weeks of lead time — the real deadline was week 3. Connecting the forecast to production constraints converts a projection into a decision with a date on it, which is what a founder can actually act on.
 
-**Demonstration case:** the Artisan Sauce hero SKU (CHP-AS-001) shows a February 2025 out-of-stock event where observed velocity was ~4.2 units/store/week and true demand corrects to ~5.0 units/store/week (+18%). Demo is anchored to a reference date of 2025-11-01. Data is synthetic (Cinderhaven, a fictional specialty food brand).
+**Demonstration case:** the app's hero case is CHP-PS-008 (Italian Seasoning Blend), a Pantry Staples SKU that sits out of stock across the retail network for most of the observed window — the persistent, low-grade OOS that silently understates true demand. The per-week velocity correction is real but modest, and it compounds: a stocked-out Artisan Sauce store-week (CHP-AS-001), for example, corrects from an observed ~4.2 to a true ~5.0 units/store/week (+19.0%), and those hidden units accumulate across every dark store-week. Demo is anchored to a reference date of 2025-11-01. Data is synthetic (Cinderhaven, a fictional specialty food brand).
 
 ## Quick start
 
