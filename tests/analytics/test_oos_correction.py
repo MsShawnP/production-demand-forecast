@@ -257,6 +257,39 @@ class TestCorrectVelocity:
         out = correct_velocity(df)
         assert len(out) == len(df)
 
+    def test_oos_correction_does_not_double_count_season(self):
+        # Two years of weekly data with a strong seasonal pattern keyed by ISO
+        # week: first-half weeks sell 1.5x (15 units), second-half 0.5x (5). An
+        # OOS week sitting in-season, surrounded by in-season neighbors, must
+        # correct to ~the neighbor LEVEL (~15) — NOT the neighbor level times the
+        # season a SECOND time. The pre-fix code multiplied the raw neighbor
+        # median by the OOS week's seasonal index (~1.5), giving ~22.5.
+        n = 104
+        weeks = _weeks("2024-01-06", n)
+        rows = []
+        for w in weeks:
+            iso = pd.Timestamp(w).isocalendar().week
+            units = 15 if iso <= 26 else 5
+            rows.append({
+                "sku": "CHP-0001", "store_id": "WM-001", "week_ending": w,
+                "units_sold": units, "is_authorized": True,
+                "is_promo": False, "is_oos": False,
+            })
+        oos_i = 10  # ISO week ~11 — in-season, neighbors also in-season
+        rows[oos_i]["units_sold"] = 0
+        rows[oos_i]["is_oos"] = True
+
+        df = pd.DataFrame(rows)
+        df["week_ending"] = pd.to_datetime(df["week_ending"])
+        out = correct_velocity(df)
+
+        corrected = float(out.loc[out["is_oos"], "true_demand"].iloc[0])
+        assert corrected < 18.0, (
+            f"corrected={corrected:.1f} looks like the season was applied twice "
+            f"(double-count would give ~22.5; single application gives ~15)"
+        )
+        assert corrected > 12.0, f"corrected={corrected:.1f} implausibly low"
+
     def test_oos_correction_raises_corrected_demand_above_suppressed(self):
         # The OOS-corrected demand should be HIGHER than the zero units_sold.
         # (This is the core value proposition of the module.)

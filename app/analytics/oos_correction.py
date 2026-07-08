@@ -115,15 +115,20 @@ def correct_velocity(df: pd.DataFrame) -> pd.DataFrame:
     """Add `true_demand` and `insufficient_data` columns to the scan DataFrame.
 
     For non-OOS rows: true_demand = units_sold.
-    For OOS rows: true_demand = rolling_median * seasonal_index.
+    For OOS rows:
+        base        = median(units_neighbor / S(woy_neighbor))  # deseasonalized
+        true_demand = base * S(woy_oos)                         # reseasonalized
 
-    Rolling median: median of `units_sold` from the 3 non-OOS, non-promo
-    weeks immediately before and 3 after the OOS block for the same
-    (sku, store_id) pair. Uses fewer than 3 if insufficient history.
+    Neighbors: the 3 non-OOS, non-promo weeks immediately before and 3 after the
+    OOS block for the same (sku, store_id) pair. Uses fewer than 3 if history is
+    short. Each neighbor is DESEASONALIZED by its own week-of-year factor before
+    the median is taken — the nearest weeks are already seasonally local, so
+    multiplying their raw median by the OOS week's seasonal index would apply the
+    season twice. Deseasonalizing first, then reseasonalizing for the OOS week's
+    week-of-year, applies the seasonal factor exactly once.
 
     Seasonal index: per-SKU mean `units_sold` by ISO week-of-year (over
     non-OOS, non-promo weeks) divided by overall per-SKU non-OOS mean.
-    Applied as a multiplier on the rolling median for OOS correction weeks.
 
     Edge cases:
     - Fewer than 3 pre- or post-OOS weeks → use what is available (min 1).
@@ -234,22 +239,32 @@ def _correct_group(
         before = [positions[p] for p in neighbor_positions if p < pos]
         after  = [positions[p] for p in neighbor_positions if p > pos]
 
-        before_vals = group.loc[before[-3:], "units_sold"].tolist() if before else []
-        after_vals  = group.loc[after[:3],  "units_sold"].tolist() if after else []
-
-        neighbor_vals = before_vals + after_vals
-        if not neighbor_vals:
+        neighbor_idx = before[-3:] + after[:3]
+        if not neighbor_idx:
             group.at[idx, "true_demand"] = 0.0
             group.at[idx, "insufficient_data"] = True
             continue
 
-        rolling_median = float(np.median(neighbor_vals))
+        # Deseasonalize each neighbor by ITS OWN week-of-year factor before
+        # taking the median. The nearest weeks are already seasonally local, so
+        # multiplying their raw median by the OOS week's seasonal index again
+        # would double-count the season. Deseasonalize → median → reseasonalize
+        # for the OOS week applies the seasonal factor exactly once.
+        deseasonalized = []
+        for nidx in neighbor_idx:
+            n_units = float(group.at[nidx, "units_sold"])
+            n_woy = int(pd.Timestamp(group.at[nidx, "week_ending"]).isocalendar().week)
+            n_s = seasonal_index.get(n_woy, 1.0)
+            if not n_s or n_s <= 0:
+                n_s = 1.0
+            deseasonalized.append(n_units / n_s)
 
-        # Apply seasonal index
+        base_level = float(np.median(deseasonalized))
+
         woy = int(pd.Timestamp(group.at[idx, "week_ending"]).isocalendar().week)
         s_idx = seasonal_index.get(woy, 1.0)
 
-        group.at[idx, "true_demand"] = max(0.0, rolling_median * s_idx)
+        group.at[idx, "true_demand"] = max(0.0, base_level * s_idx)
         group.at[idx, "insufficient_data"] = False
 
     return group
