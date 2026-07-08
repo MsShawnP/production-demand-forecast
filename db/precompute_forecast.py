@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS copack.forecast_snapshot (
     snapshot_generated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS copack.forecast_week_snapshot (
+    sku TEXT,
+    week_ending DATE,
+    forecast_units REAL,
+    snapshot_generated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (sku, week_ending)
+);
+
 CREATE TABLE IF NOT EXISTS copack.doom_loop_snapshot (
     sku TEXT,
     week_ending DATE,
@@ -209,6 +217,12 @@ def run(conn):
     forecast = build_rolling_forecast(true_demand, forecast_from_week=forecast_from)
     logger.info("  %d forecast rows", len(forecast))
 
+    # Per-week projected series (the STL seasonal shape) — persisted so the
+    # snapshot-mode app draws the seasonal forecast, not a flat mean line.
+    forecast_weeks = forecast[forecast["is_projected"]].copy()
+    forecast_weeks["week_ending"] = pd.to_datetime(forecast_weeks["week_ending"])
+    logger.info("  %d projected forecast-week rows", len(forecast_weeks))
+
     logger.info("Loading reference data...")
     inventory = _get_inventory(conn)
     schedule = _get_schedule(conn)
@@ -265,6 +279,7 @@ def run(conn):
     cur.execute(_DDL)
 
     cur.execute("TRUNCATE copack.forecast_snapshot")
+    cur.execute("TRUNCATE copack.forecast_week_snapshot")
     cur.execute("TRUNCATE copack.doom_loop_snapshot")
 
     logger.info("Writing forecast_snapshot...")
@@ -300,6 +315,22 @@ def run(conn):
             "conflict": bool(row.get("shared_line_conflict", False)),
             "cskus": conflict,
             "vel": float(row.get("median_store_velocity", 0)),
+        })
+
+    logger.info("Writing forecast_week_snapshot...")
+    for _, row in forecast_weeks.iterrows():
+        cur.execute("""
+            INSERT INTO copack.forecast_week_snapshot (
+                sku, week_ending, forecast_units
+            ) VALUES (
+                %(sku)s, %(we)s, %(fcst)s
+            )
+            ON CONFLICT (sku, week_ending) DO UPDATE
+                SET forecast_units = EXCLUDED.forecast_units
+        """, {
+            "sku": row["sku"],
+            "we": row["week_ending"].date(),
+            "fcst": float(row["forecast_units"]),
         })
 
     logger.info("Writing doom_loop_snapshot...")

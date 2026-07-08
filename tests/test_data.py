@@ -184,3 +184,105 @@ class TestGetSopSummaryPipeline:
         assert len(captured_configs) == 1
         # All SKUs should have lead_time_weeks = 6 + 4 = 10
         assert (captured_configs[0]["lead_time_weeks"] == 10).all()
+
+
+# ---------------------------------------------------------------------------
+# Snapshot mode — per-week seasonal forecast + scenario stockout recompute
+# ---------------------------------------------------------------------------
+
+class TestSnapshotScenario:
+    """The two snapshot-mode fixes:
+
+    1. The snapshot draws the persisted per-week STL series (seasonal shape),
+       not a flat mean line — and falls back to a flat line only when the
+       per-week table is absent.
+    2. A scenario recomputes stockout on the lifted forecast, so a big enough
+       promo/new-door lift can push a HEALTHY SKU (no baseline stockout) red.
+    """
+
+    _AS_OF = pd.Timestamp("2025-11-01")
+
+    def _seasonal_weeks(self) -> pd.DataFrame:
+        vals = [30, 32, 35, 38, 42, 45, 48, 45, 42, 38, 35, 30]
+        return pd.DataFrame([
+            {"sku": "CHP-HEALTHY",
+             "week_ending": self._AS_OF + pd.Timedelta(weeks=i + 1),
+             "forecast_units": float(v)}
+            for i, v in enumerate(vals)
+        ])
+
+    def _summary(self) -> pd.DataFrame:
+        df = pd.DataFrame([{
+            "sku": "CHP-HEALTHY",
+            "product_name": "Healthy Product",
+            "product_line": "Artisan Sauces",
+            "weekly_forecast_mean": 40.0,
+            "current_inventory": 600.0,      # 12wk baseline demand (~460) < 600
+            "stockout_date": pd.NaT,
+            "decision_deadline": pd.NaT,
+            "days_until_deadline": None,
+            "deadline_flag": "OK",
+            "lead_time_weeks": 8,
+            "shared_line_conflict": False,
+            "conflict_skus": [],
+            "median_store_velocity": 2.0,
+        }])
+        df["stockout_date"] = pd.to_datetime(df["stockout_date"])
+        df["decision_deadline"] = pd.to_datetime(df["decision_deadline"])
+        return df
+
+    def _config(self) -> pd.DataFrame:
+        return pd.DataFrame([{
+            "sku": "CHP-HEALTHY",
+            "line_id": "LINE-A",
+            "lead_time_weeks": 8,
+            "product_name": "Healthy Product",
+            "product_line": "Artisan Sauces",
+        }])
+
+    def _patch(self, monkeypatch):
+        from app import data as data_module
+        monkeypatch.setattr(data_module, "_LIVE_COMPUTE", False)
+        monkeypatch.setattr(data_module, "_read_forecast_snapshot", lambda: self._summary())
+        monkeypatch.setattr(data_module, "_read_forecast_week_snapshot",
+                            lambda: self._seasonal_weeks())
+        monkeypatch.setattr(data_module, "get_production_schedule", lambda: pd.DataFrame())
+        monkeypatch.setattr(data_module, "get_sku_config", lambda: self._config())
+        return data_module
+
+    def test_snapshot_forecast_shows_seasonality(self, monkeypatch):
+        data_module = self._patch(monkeypatch)
+        fc = data_module.get_forecast.__wrapped__(0.0, 0, 0)
+        sku_fc = fc[fc["sku"] == "CHP-HEALTHY"].sort_values("week_ending")
+        assert len(sku_fc) == 12
+        # Not a flat line — the STL seasonal shape is preserved.
+        assert sku_fc["forecast_units"].std() > 0
+        assert sku_fc["forecast_units"].nunique() > 1
+        assert (sku_fc["forecast_method"] == "snapshot_stl").all()
+
+    def test_flat_fallback_when_week_table_missing(self, monkeypatch):
+        data_module = self._patch(monkeypatch)
+        # Older snapshot: per-week table unavailable → flat line at the mean.
+        monkeypatch.setattr(data_module, "_read_forecast_week_snapshot",
+                            lambda: pd.DataFrame())
+        fc = data_module.get_forecast.__wrapped__(0.0, 0, 0)
+        sku_fc = fc[fc["sku"] == "CHP-HEALTHY"]
+        assert len(sku_fc) == 12
+        assert sku_fc["forecast_units"].nunique() == 1     # flat
+        assert (sku_fc["forecast_method"] == "snapshot_flat").all()
+
+    def test_baseline_healthy_sku_is_ok(self, monkeypatch):
+        data_module = self._patch(monkeypatch)
+        sop = data_module.get_sop_summary.__wrapped__(0.0, 0, 0)
+        row = sop[sop["sku"] == "CHP-HEALTHY"].iloc[0]
+        assert pd.isna(row["stockout_date"])
+        assert row["deadline_flag"] == "OK"
+
+    def test_scenario_turns_healthy_sku_red(self, monkeypatch):
+        data_module = self._patch(monkeypatch)
+        # Big promo + new doors lifts the forecast far above the runway.
+        sop = data_module.get_sop_summary.__wrapped__(0.5, 200, 0)
+        row = sop[sop["sku"] == "CHP-HEALTHY"].iloc[0]
+        assert pd.notna(row["stockout_date"]), "healthy SKU should now stock out"
+        assert row["deadline_flag"] in ("PAST_DUE", "CRITICAL", "WARNING"), \
+            f"expected a red/urgent flag, got {row['deadline_flag']}"

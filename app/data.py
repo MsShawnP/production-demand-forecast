@@ -375,6 +375,35 @@ def _read_forecast_snapshot() -> pd.DataFrame:
 
 
 @cache.memoize(timeout=_DEMAND_CACHE_TTL)
+def _read_forecast_week_snapshot() -> pd.DataFrame:
+    """Per-week projected forecast series persisted by db/precompute_forecast.py.
+
+    Columns: sku, week_ending, forecast_units. Carries the STL seasonal shape
+    so snapshot mode can draw the seasonal forecast rather than a flat mean.
+    Returns an empty DataFrame if the table is missing (older snapshot) — the
+    caller then falls back to the flat weekly_forecast_mean line.
+    """
+    from app.db import get_conn
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT sku, week_ending, forecast_units
+                FROM copack.forecast_week_snapshot
+                ORDER BY sku, week_ending
+            """)
+            cols = [desc[0] for desc in cur.description]
+            df = pd.DataFrame(cur.fetchall(), columns=cols)
+        if not df.empty:
+            df["week_ending"] = pd.to_datetime(df["week_ending"])
+            df["forecast_units"] = df["forecast_units"].astype(float)
+        return df
+    except Exception:
+        logger.exception("_read_forecast_week_snapshot failed")
+        return pd.DataFrame()
+
+
+@cache.memoize(timeout=_DEMAND_CACHE_TTL)
 def _read_doom_loop_snapshot(sku: str) -> pd.DataFrame:
     from app.db import get_conn
     try:
@@ -403,75 +432,103 @@ def _apply_scenario_to_snapshot(
     new_doors: int,
     lead_time_slip_weeks: int,
 ) -> pd.DataFrame:
-    """Adjust baseline snapshot values for scenario parameters.
+    """Recompute the S&OP summary for a scenario in snapshot mode.
 
-    Uses linear approximations: stockout dates scale proportionally with
-    the forecast change, decision deadlines shift by lead-time slip.
+    The baseline snapshot only carries a stockout_date for SKUs that already
+    stock out. The old behavior merely RESCALED those existing dates, so a
+    healthy SKU (no baseline stockout) could never be pushed red by a promo or
+    new-door lift — which defeats the "watch the plan break" pitch. This instead
+    recomputes stockout from the LIFTED per-week forecast drawn down against
+    on-hand inventory and booked production — the same capacity pipeline the
+    live path uses — so a large enough lift turns a previously-safe SKU red.
     """
-    df = snap.copy()
     as_of = pd.Timestamp(_DEMO_AS_OF_DATE)
-    baseline_forecast = df["weekly_forecast_mean"].copy()
 
-    if promo_lift_pct > 0:
-        df["weekly_forecast_mean"] *= (1 + promo_lift_pct)
-    if new_doors > 0:
-        df["weekly_forecast_mean"] += new_doors * df["median_store_velocity"].fillna(0)
+    # Lifted per-week forecast (promo % and new doors applied per week).
+    lifted = _forecast_from_snapshot(
+        promo_lift_pct=promo_lift_pct, new_doors=new_doors
+    )
+    if lifted.empty:
+        return snap.copy()
 
-    has_stockout = df["stockout_date"].notna()
-    if has_stockout.any() and (promo_lift_pct > 0 or new_doors > 0):
-        original_days = (
-            df.loc[has_stockout, "stockout_date"] - as_of
-        ).dt.days.astype(float)
-        safe_forecast = df.loc[has_stockout, "weekly_forecast_mean"].replace(
-            0, float("nan")
-        )
-        ratio = baseline_forecast[has_stockout] / safe_forecast
-        adjusted_days = (original_days * ratio).round()
-        df.loc[has_stockout, "stockout_date"] = (
-            as_of + pd.to_timedelta(adjusted_days, unit="D")
-        )
+    # On-hand inventory (already in units) straight from the snapshot.
+    inventory = snap[["sku", "current_inventory"]].rename(
+        columns={"current_inventory": "on_hand_units"}
+    )
 
-    lt = df["lead_time_weeks"].fillna(0).astype(float) + lead_time_slip_weeks
-    df["decision_deadline"] = pd.NaT
-    has_stockout = df["stockout_date"].notna()
-    if has_stockout.any():
-        df.loc[has_stockout, "decision_deadline"] = (
-            df.loc[has_stockout, "stockout_date"]
-            - pd.to_timedelta(lt[has_stockout] * 7, unit="D")
-        )
+    schedule = get_production_schedule()
+    schedule_for_cap = (
+        schedule[["sku", "line_id", "scheduled_week", "quantity_units", "status"]]
+        if not schedule.empty else schedule
+    )
 
-    df["days_until_deadline"] = pd.array([pd.NA] * len(df), dtype="Int64")
-    has_deadline = df["decision_deadline"].notna()
-    if has_deadline.any():
-        df.loc[has_deadline, "days_until_deadline"] = (
-            (df.loc[has_deadline, "decision_deadline"] - as_of).dt.days
+    # SKU config for lead time (+ slip), line grouping, and metadata. Fall back
+    # to the snapshot's own columns if the config query is unavailable.
+    sku_config = get_sku_config()
+    if sku_config.empty:
+        sku_config = snap[["sku", "lead_time_weeks", "product_name",
+                           "product_line"]].copy()
+        sku_config["line_id"] = None
+    sku_config_adj = sku_config.copy()
+    if lead_time_slip_weeks > 0:
+        sku_config_adj["lead_time_weeks"] = (
+            sku_config_adj["lead_time_weeks"].fillna(0) + lead_time_slip_weeks
         )
 
-    flags = []
-    for days in df["days_until_deadline"]:
-        if days is pd.NA or pd.isna(days):
-            flags.append("OK")
-        elif days < 0:
-            flags.append("PAST_DUE")
-        elif days < 14:
-            flags.append("CRITICAL")
-        elif days < 28:
-            flags.append("WARNING")
-        else:
-            flags.append("OK")
-    df["deadline_flag"] = flags
+    # Step 1: recompute stockout on the lifted forecast (covers healthy SKUs).
+    sop = compute_stockout_date(lifted, inventory, schedule_for_cap)
+    # Step 2: decision deadlines + flags, anchored to the demo reference date.
+    sop = compute_decision_deadline(sop, sku_config_adj, as_of_date=as_of)
+    # Step 3: shared-line conflicts.
+    sop = detect_shared_line_conflicts(sop, sku_config_adj)
 
-    return df
+    # Step 4: restore the metadata columns the baseline snapshot carries so the
+    # downstream views and exports see the same schema.
+    meta_cols = [c for c in ("sku", "product_name", "product_line",
+                             "lead_time_weeks") if c in sku_config_adj.columns]
+    sop = sop.merge(sku_config_adj[meta_cols].drop_duplicates("sku"),
+                    on="sku", how="left")
+    if "median_store_velocity" in snap.columns:
+        sop = sop.merge(snap[["sku", "median_store_velocity"]],
+                        on="sku", how="left")
+
+    return sop
 
 
 def _forecast_from_snapshot(
     promo_lift_pct: float = 0.0, new_doors: int = 0
 ) -> pd.DataFrame:
-    """Synthesize per-week forecast from snapshot baseline (flat line per SKU)."""
+    """Per-week forecast from the snapshot, carrying the STL seasonal shape.
+
+    Reads the persisted per-week series (copack.forecast_week_snapshot) so the
+    drawn forecast shows seasonality — and so the depletion curve and the
+    stockout vline both derive from the SAME series and cannot contradict. Scenario
+    lift (promo %, new doors) is applied per week. Falls back to a flat line at
+    weekly_forecast_mean only when the per-week table is unavailable (an older
+    snapshot generated before precompute wrote it).
+    """
     snap = _read_forecast_snapshot()
     if snap.empty:
         return pd.DataFrame()
 
+    vel_map = snap.set_index("sku")["median_store_velocity"].to_dict()
+    weeks_df = _read_forecast_week_snapshot()
+
+    if not weeks_df.empty:
+        df = weeks_df.copy()
+        df["forecast_units"] = df["forecast_units"].astype(float)
+        if promo_lift_pct > 0:
+            df["forecast_units"] *= (1 + promo_lift_pct)
+        if new_doors > 0:
+            per_door = df["sku"].map(vel_map).astype(float).fillna(0.0)
+            df["forecast_units"] += new_doors * per_door
+        df["forecast_units"] = df["forecast_units"].clip(lower=0)
+        df["is_projected"] = True
+        df["forecast_method"] = "snapshot_stl"
+        return df[["sku", "week_ending", "forecast_units",
+                   "is_projected", "forecast_method"]]
+
+    # Fallback: flat line at the stored weekly mean (older snapshot).
     forecast_from = pd.Timestamp(_DEMO_AS_OF_DATE)
     rows = []
     for _, sku_row in snap.iterrows():
@@ -479,15 +536,15 @@ def _forecast_from_snapshot(
         if promo_lift_pct > 0:
             fcst *= (1 + promo_lift_pct)
         if new_doors > 0:
-            fcst += new_doors * float(sku_row.get("median_store_velocity", 0))
+            fcst += new_doors * float(sku_row.get("median_store_velocity", 0) or 0)
 
         for week_offset in range(1, 13):
             rows.append({
                 "sku": sku_row["sku"],
                 "week_ending": forecast_from + pd.Timedelta(weeks=week_offset),
-                "forecast_units": fcst,
+                "forecast_units": max(0.0, fcst),
                 "is_projected": True,
-                "forecast_method": "snapshot",
+                "forecast_method": "snapshot_flat",
             })
 
     return pd.DataFrame(rows)
