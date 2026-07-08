@@ -25,7 +25,7 @@ import base64
 import dash_ag_grid as dag
 
 from app.charts import add_vline_at_date, base_chart_layout
-from app.components import empty_state, kpi_chip, loading_spinner
+from app.components import chart_footnote, empty_state, kpi_chip, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, DEADLINE_CRITICAL, DEADLINE_WARNING, FONT_SANS,
     FONT_SERIF, GREY_LIGHT, INK, SG_ORANGE, SURFACE_FAIL, SURFACE_PASS,
@@ -356,9 +356,13 @@ def _build_detail_panel(row: dict, scenario: dict) -> html.Div:
     fig.add_trace(go.Scatter(
         x=weeks, y=demands,
         name="Weekly Forecast Demand",
-        mode="lines+markers",
+        mode="lines+markers+text",
         line=dict(color=TOKYO_ROSE, width=2),
         marker=dict(size=5),
+        text=[f"{d:.0f}" for d in demands],
+        textposition="top center",
+        textfont=dict(family=FONT_SANS, size=10, color=TOKYO_ROSE),
+        cliponaxis=False,
     ))
 
     # Add stockout vline if present
@@ -393,6 +397,11 @@ def _build_detail_panel(row: dict, scenario: dict) -> html.Div:
         html.H3(product_name, style={"fontFamily": FONT_SERIF, "fontWeight": "700",
                                      "fontSize": "18px", "marginBottom": "8px"}),
         dcc.Graph(figure=fig, config={"displayModeBar": False}),
+        chart_footnote(
+            "Source: OOS-corrected 12-week demand forecast (STL) drawn down against "
+            "on-hand inventory and booked co-packer runs. Cinderhaven Provisions LLC "
+            "(synthetic). Stockout marks the first week projected inventory reaches zero."
+        ),
         html.P(doom_text, style={
             "fontSize": "14px", "color": TEXT_SEC,
             "borderLeft": f"3px solid {GREY_LIGHT}", "paddingLeft": "12px",

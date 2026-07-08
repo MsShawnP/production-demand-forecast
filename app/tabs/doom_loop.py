@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 from dash import Input, Output, dcc, html
 
 from app.charts import base_chart_layout
-from app.components import dark_card, loading_spinner
+from app.components import chart_footnote, dark_card, loading_spinner
 from app.constants import (
     CANVAS, CHICAGO, FONT_SANS, FONT_SERIF, GREY_LIGHT, INK,
     SG_ORANGE, TEXT, TEXT_SEC, TEAL,
@@ -100,7 +100,7 @@ def layout() -> html.Div:
             ),
         ], style={"marginBottom": "40px"}),
 
-        html.Hr(style={"border": "none", "borderTop": "1px solid #999999",
+        html.Hr(style={"border": "none", "borderTop": f"1px solid {GREY_LIGHT}",
                         "margin": "40px 0"}),
 
         # ── Period selector (Doom Loop only) ──────────────────────────────
@@ -207,11 +207,19 @@ def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.
         cards = _build_hero_cards(
             hidden_units, total_dark, avg_under, peak_under, weeks_dark, n_weeks
         )
+        chart_block = html.Div([
+            dcc.Graph(figure=fig, config={"displayModeBar": False}),
+            chart_footnote(
+                "Source: Cinderhaven Provisions LLC (synthetic POS panel). "
+                "Dark store-weeks are authorized store-weeks with no scan row; "
+                "hidden demand is the OOS-corrected true demand for those weeks, "
+                "reconstructed from the surrounding non-stockout weeks."
+            ),
+        ], style={"marginBottom": "24px"})
         return (
             title,
             subtitle,
-            dcc.Graph(figure=fig, config={"displayModeBar": False},
-                      style={"marginBottom": "24px"}),
+            chart_block,
             cards,
         )
 

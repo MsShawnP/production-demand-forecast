@@ -9,7 +9,7 @@ from dash import html
 
 from app.constants import (
     CARD_BG, CARD_BORDER, CARD_ITEM, CARD_MUTED, CARD_SEC, CARD_TEXT,
-    FONT_SANS, GREY_LIGHT, TEXT_SEC, CHICAGO,
+    FONT_SANS, FONT_SERIF, GREY_LIGHT, TEXT_SEC, CHICAGO,
 )
 
 
@@ -29,7 +29,9 @@ def dark_card(primary: str, secondary: str | None = None, muted: str | None = No
     """Dark callout card — Lailara Design System."""
     children = [
         html.Span(primary, style={"fontSize": "28px", "fontWeight": "700",
-                                   "color": CARD_TEXT, "display": "block"}),
+                                   "color": CARD_TEXT, "display": "block",
+                                   "fontFamily": FONT_SERIF,
+                                   "letterSpacing": "-0.02em"}),
     ]
     if secondary:
         children.append(html.Span(secondary, style={"fontSize": "13px",
@@ -46,6 +48,26 @@ def dark_card(primary: str, secondary: str | None = None, muted: str | None = No
             "padding": "16px 24px",
             "flex": "1",
             "minWidth": "0",
+        },
+    )
+
+
+def chart_footnote(text: str) -> html.Div:
+    """Source / methodology line shown under a chart.
+
+    Lailara Design System chart rule: a footnote below every chart (source,
+    exclusions, methodology). Sans, 11px, italic, London-35.
+    """
+    return html.Div(
+        text,
+        style={
+            "fontFamily": FONT_SANS,
+            "fontSize": "11px",
+            "fontStyle": "italic",
+            "color": TEXT_SEC,
+            "marginTop": "6px",
+            "marginBottom": "20px",
+            "lineHeight": "1.4",
         },
     )
 
@@ -67,7 +89,8 @@ def kpi_chip(label: str, value: str, *, alert: bool = False) -> html.Div:
     return html.Div(
         [
             html.Span(value, style={"fontSize": "22px", "fontWeight": "700",
-                                     "color": color, "fontFamily": FONT_SANS}),
+                                     "color": color, "fontFamily": FONT_SERIF,
+                                     "letterSpacing": "-0.02em"}),
             html.Span(label, style={"fontSize": "12px", "color": TEXT_SEC,
                                      "display": "block", "marginTop": "2px"}),
         ],

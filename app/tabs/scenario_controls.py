@@ -342,7 +342,8 @@ def _kpi_with_delta(label: str, value: int, baseline: int,
 
     children = [
         html.Span(str(value), style={"fontSize": "22px", "fontWeight": "700",
-                                      "color": color, "fontFamily": FONT_SANS}),
+                                      "color": color, "fontFamily": FONT_SERIF,
+                                      "letterSpacing": "-0.02em"}),
         html.Span(label, style={"fontSize": "12px", "color": TEXT_SEC,
                                  "display": "block", "marginTop": "2px"}),
     ]
