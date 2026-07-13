@@ -243,3 +243,13 @@ ready. Stack TBD — to be decided during /clarify.
 **Next:** No immediate work queued. Next /improve due 2026-07-01.
 
 ---
+
+## 2026-07-13 — Deploy: precompute regen + fly deploy (rotated DB credential)
+
+**What changed:** Recovered the rotated cinderhaven-db credential from the Postgres app's operator secret (never written to any tracked file; `.env` is gitignored). Ran `python db/precompute_forecast.py` against Fly Postgres via `flyctl proxy` — OOS correction 701,043 → 711,847 rows; wrote `forecast_snapshot` (4,500 rows), `forecast_week_snapshot` (per-week STL — the 07-08 persistence fix), and `doom_loop_snapshot` (3,900 rows) for 50 SKUs. Then `fly deploy` (app `cinderhaven-demand-forecast`).
+
+**State:** forecast.lailarallc.com live (200); renders the CHP-PS-008 "Italian Seasoning Blend" hidden-demand case with the real 78-week seasonal series. Resolves §1.2 of the 2026-07-13 audit.
+
+**Next:** Nothing outstanding for this repo.
+
+---
