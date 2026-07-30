@@ -181,7 +181,7 @@ The piece joins demand-side data (velocity/POS, with OOS correction), the brand'
 Cinderhaven's top SKU (an Artisan Sauce) went out of stock at Walmart for 11 days in February — the same event surfaced in the Competitive Shelf Intelligence piece. The analysis shows the doom loop in action:
 
 - **Naive forecast** (built on observed velocity): projects demand of ~4.2 units/store/week and says "current production is adequate."
-- **True-demand forecast** (OOS-corrected): the February stockout suppressed observed velocity; corrected true demand is ~5.0 units/store/week — 18% higher.
+- **True-demand forecast** (OOS-corrected): the February stockout suppressed observed velocity; corrected true demand is ~5.0 units/store/week — 19% higher.
 - **Capacity overlay:** Cinderhaven's co-packer is booked solid through April with a 9-week lead time.
 - **The gap:** at true demand, the SKU stocks out again in mid-May. The production decision deadline to prevent it is early March — weeks away.
 - **Without the forecast:** Cinderhaven runs the naive number, under-produces, and short-ships the same SKU again in May — the doom loop completing its second cycle.
