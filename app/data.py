@@ -98,6 +98,28 @@ def _clamp_scenario(
 # ---------------------------------------------------------------------------
 
 @cache.memoize(timeout=_DEMAND_CACHE_TTL)
+def get_sku_wholesale(sku: str) -> float | None:
+    """Blended wholesale price ($/unit) for one SKU, from canonical sku_costs.
+
+    Used to dollarize hidden demand (units x wholesale). Returns None when the
+    row is missing or the query fails — callers must degrade to units-only.
+    """
+    from app.db import get_conn
+    try:
+        with get_conn() as conn:
+            df = pd.read_sql(
+                "SELECT wholesale_price FROM sku_costs WHERE sku = %(sku)s",
+                conn, params={"sku": sku},
+            )
+        if df.empty or pd.isna(df["wholesale_price"].iloc[0]):
+            return None
+        return float(df["wholesale_price"].iloc[0])
+    except Exception:
+        logger.exception("get_sku_wholesale failed for %s", sku)
+        return None
+
+
+@cache.memoize(timeout=_DEMAND_CACHE_TTL)
 def get_product_master() -> pd.DataFrame:
     """All 50 Cinderhaven SKUs from product_master."""
     from app.db import get_conn

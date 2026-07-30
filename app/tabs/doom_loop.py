@@ -51,6 +51,12 @@ def layout() -> html.Div:
                    "color": TEXT_SEC, "marginBottom": "16px"},
         ),
 
+        # The finding, dollarized, before any theory (30-second read).
+        dcc.Loading(
+            custom_spinner=loading_spinner("Loading…"),
+            children=html.Div(id="doom-loop-topline"),
+        ),
+
         html.Div([
             html.P(
                 "The most expensive stockout is the one nobody notices.",
@@ -144,10 +150,11 @@ def layout() -> html.Div:
 def register_callbacks(app) -> None:
     @app.callback(
         Output("doom-loop-hero", "children"),
+        Output("doom-loop-topline", "children"),
         Input("time-period-selector", "value"),
     )
     def update_hero(period):
-        title, subtitle, chart, cards = _build_hero_section(period=period)
+        title, subtitle, chart, cards, topline = _build_hero_section(period=period)
         return [
             html.H2(title, style={
                 "fontFamily": FONT_SERIF, "fontWeight": "700",
@@ -158,27 +165,29 @@ def register_callbacks(app) -> None:
             }),
             chart,
             cards,
-        ]
+        ], topline
 
 
 # ---------------------------------------------------------------------------
 # Private: hero case section builder
 # ---------------------------------------------------------------------------
 
-def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.Div]:
-    """Build the reframed hero: title, subtitle, dark-store-weeks chart, cards.
+def _build_hero_section(period: str = "full"):
+    """Build the reframed hero: title, subtitle, chart, cards, dollar topline.
 
-    All figures come from the gap-based OOS computation for the hero SKU.
-    Falls back to a safe message (never crashes) if the case is not found.
+    All figures come from the gap-based OOS computation for the hero SKU;
+    the topline dollarizes hidden units at the SKU's canonical wholesale price
+    (units-only when the price is unavailable). Falls back to a safe message
+    (never crashes) if the case is not found.
     """
     fallback_title = "The Hidden-Demand Case"
     try:
-        from app.data import get_doom_loop_weekly, get_product_master
+        from app.data import get_doom_loop_weekly, get_product_master, get_sku_wholesale
 
         period_wks = _PERIOD_WEEKS.get(period)
         wk = get_doom_loop_weekly(sku=_HERO_SKU, period_weeks=period_wks)
         if wk.empty or not bool((wk["stores_dark"] > 0).any()):
-            return fallback_title, "", _fallback_chart(), html.Div()
+            return fallback_title, "", _fallback_chart(), html.Div(), html.Div()
 
         total_dark   = int(wk["stores_dark"].sum())
         hidden_units = float(wk["weekly_hidden_units"].sum())
@@ -204,8 +213,15 @@ def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.
         fig = _build_dark_weeks_chart(
             wk["week_ending"], wk["stores_dark"], wk["cumulative_hidden_units"],
         )
+        wholesale = get_sku_wholesale(_HERO_SKU)
+        hidden_dollars = hidden_units * wholesale if wholesale else None
         cards = _build_hero_cards(
-            hidden_units, total_dark, avg_under, peak_under, weeks_dark, n_weeks
+            hidden_units, total_dark, avg_under, peak_under, weeks_dark, n_weeks,
+            hidden_dollars,
+        )
+        topline = _build_topline(
+            hidden_units, hidden_dollars, wholesale, name,
+            window_start, window_end,
         )
         chart_block = html.Div([
             dcc.Graph(figure=fig, config={"displayModeBar": False}),
@@ -221,11 +237,12 @@ def _build_hero_section(period: str = "full") -> tuple[str, str, html.Div, html.
             subtitle,
             chart_block,
             cards,
+            topline,
         )
 
     except Exception:
         logger.exception("Hero case section failed — showing fallback")
-        return fallback_title, "", _fallback_chart(), html.Div()
+        return fallback_title, "", _fallback_chart(), html.Div(), html.Div()
 
 
 def _build_dark_weeks_chart(weeks, dark_counts, cum_hidden) -> go.Figure:
@@ -266,15 +283,52 @@ def _build_dark_weeks_chart(weeks, dark_counts, cum_hidden) -> go.Figure:
     return fig
 
 
+def _build_topline(hidden_units, hidden_dollars, wholesale, name,
+                   window_start, window_end) -> html.Div:
+    """The dollar figure first; units and basis named beneath it."""
+    if hidden_dollars:
+        figure = f"${hidden_dollars:,.0f}"
+        basis = (
+            f"of wholesale demand hidden by stockout silence — {name}, "
+            f"{window_start} to {window_end}. "
+            f"Basis: {hidden_units:,.0f} OOS-corrected hidden units x "
+            f"${wholesale:.2f}/unit canonical wholesale."
+        )
+    else:
+        figure = f"{hidden_units:,.0f} units"
+        basis = (
+            f"of demand hidden by stockout silence — {name}, "
+            f"{window_start} to {window_end} (wholesale price unavailable; "
+            "units shown unpriced)."
+        )
+    return html.Div([
+        html.Div(figure, style={
+            "fontFamily": FONT_SERIF, "fontWeight": "700",
+            "fontSize": "40px", "color": INK, "lineHeight": "1.1",
+        }),
+        html.P(basis, style={
+            "fontFamily": FONT_SANS, "fontSize": "14px",
+            "color": TEXT_SEC, "margin": "6px 0 0 0", "maxWidth": "720px",
+        }),
+    ], style={"margin": "8px 0 28px 0"})
+
+
 def _build_hero_cards(
     hidden_units: float, total_dark: int, avg_under: float,
     peak_under: float, weeks_dark: int, n_weeks: int,
+    hidden_dollars: float | None = None,
 ) -> html.Div:
+    units_secondary = f"demand the forecast never saw — one SKU, {n_weeks} weeks"
+    if hidden_dollars:
+        units_secondary = (
+            f"demand the forecast never saw — ${hidden_dollars:,.0f} at "
+            f"wholesale, one SKU, {n_weeks} weeks"
+        )
     return html.Div([
         html.Div([
             dark_card(
                 primary=f"{hidden_units:,.0f} units",
-                secondary=f"demand the forecast never saw — one SKU, {n_weeks} weeks",
+                secondary=units_secondary,
             ),
             dark_card(
                 primary=f"{peak_under:.1f}%",
