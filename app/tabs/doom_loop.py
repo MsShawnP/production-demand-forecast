@@ -38,6 +38,11 @@ _PERIOD_WEEKS = {"full": None, "12m": 52, "6m": 26, "3m": 13}
 
 
 def layout() -> html.Div:
+    # Single source of truth for the retained-history clip (app/data.py) —
+    # every doom-loop query is bounded to this trailing window, so the
+    # "Full History" option is labeled with what it actually shows.
+    from app.data import _HISTORY_WEEKS
+
     return html.Div([
         # ── Section 1: Narrative (static) ─────────────────────────────────
         html.H2(
@@ -118,7 +123,7 @@ def layout() -> html.Div:
             dcc.RadioItems(
                 id="time-period-selector",
                 options=[
-                    {"label": "Full History", "value": "full"},
+                    {"label": f"Full History ({_HISTORY_WEEKS} weeks)", "value": "full"},
                     {"label": "Last 12 Months", "value": "12m"},
                     {"label": "Last 6 Months", "value": "6m"},
                     {"label": "Last 3 Months", "value": "3m"},
@@ -342,8 +347,9 @@ def _build_hero_cards(
                   "marginBottom": "16px"}),
         html.P(
             "No single week looks like a crisis. But the leakage never stops. "
-            "An eleven per cent velocity understatement in the worst week does "
-            "not correct itself — it compounds through every downstream process "
+            f"In the worst week, velocity was understated by {peak_under:.1f} "
+            "per cent — an understatement that does not correct itself; it "
+            "compounds through every downstream process "
             "that trusts the POS signal. Over four quarters, the forecast "
             "undershoots, replenishment comes in light, fill rate drifts, and "
             "the retailer scorecard conversation shifts from \"let's grow "

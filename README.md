@@ -44,7 +44,7 @@ python -m app.run
 
 The app runs at http://localhost:8050.
 
-Run the tests — 54 unit and integration tests covering the analytics pipeline (OOS correction, rolling forecast, capacity overlay) and the data query layer:
+Run the tests — 60 unit and integration tests covering the analytics pipeline (OOS correction, rolling forecast, capacity overlay) and the data query layer:
 
 ```bash
 pytest tests/
