@@ -121,8 +121,16 @@ def compute_decision_deadline(
         "WARNING"   — 14 ≤ days_until_deadline < 28
         "OK"        — days_until_deadline ≥ 28 or no stockout
     """
+    # as_of_date is required — the analysis anchor must be explicit, never the wall
+    # clock (a live clock would drift the deadline math every day it runs). Checked
+    # before the try so the broad except below cannot swallow it.
+    if as_of_date is None:
+        raise ValueError(
+            "compute_decision_deadline requires an explicit as_of_date; "
+            "it never defaults to the wall clock."
+        )
     try:
-        today = (as_of_date or pd.Timestamp.today()).normalize()
+        today = as_of_date.normalize()
         sop = sop_df.copy()
         config_map = (
             sku_config_df.set_index("sku")[["lead_time_weeks"]].to_dict("index")
