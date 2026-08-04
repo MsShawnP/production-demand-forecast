@@ -78,6 +78,25 @@ After deploy, `fly ssh console` and verify WeasyPrint works in the container: `p
 
 Canonical Cinderhaven conformance — 50 SKUs across 5 product lines and 6 contracted retailers. This tool uses an S&OP subset of the full Cinderhaven dataset; the narrower SKU/retailer scope is intentional, not data drift.
 
+## Client engagement use
+
+The demo renders the live Cinderhaven dataset. To forecast a **client's own
+demand** from their sell-through history — validated, never committed, never
+deployed — use client mode (see [INPUT-SPEC.md](INPUT-SPEC.md)):
+
+```bash
+pip install -e ../engagement-template/lib      # the shared lailara_engagement scaffold
+python client_mode.py --config engagement.yml --input client-data/demand.csv \
+    --out client-output [--final]
+```
+
+It forecasts each SKU forward `horizon_weeks` from the config `as_of_date` (never
+the wall clock) using the **same engine** the demo uses (`build_rolling_forecast`,
+STL or rolling-mean per SKU). Output to `client-output/` (gitignored): a branded,
+provenance-footed, DRAFT-watermarked `demand-forecast-summary.html` + `summary.json`,
+or a Data Readiness Report if a required column is missing. The demo app is never
+edited (golden-locked).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
