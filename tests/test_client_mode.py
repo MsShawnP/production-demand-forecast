@@ -72,6 +72,28 @@ def test_clean_run_forecasts_flat_demand(tmp_path):
     assert "2025-11-01" in html and "12-week" in html.lower() or "12 weeks" in html.lower()
 
 
+def test_horizon_label_tracks_config_not_hardcoded(tmp_path):
+    """The rendered horizon ('N-Week Demand Forecast', 'next N weeks', 'N-week
+    horizon') must come from basis.horizon_weeks, not a hardcoded 12. The clean
+    run asserts only the demo's own '12-week' — a positive-only check a hardcoded
+    12 would also pass, the gap that let trade-spend quote 26 weeks of data as
+    'trailing 52 weeks'.
+
+    Both halves: feed a distinctive horizon and assert it tracks, AND assert the
+    demo default is absent."""
+    p = tmp_path / "engagement.yml"
+    p.write_text(_CONFIG.replace("horizon_weeks: 12", "horizon_weeks: 9")
+                        .replace('window_label: "12-week horizon"', 'window_label: "9-week horizon"'),
+                 encoding="utf-8")
+    src = _demand_csv(tmp_path / "d.csv")
+    result = client_mode.run(str(p), src, str(tmp_path / "out"))
+    assert result["status"] == "ok"
+    html = open(result["report"], encoding="utf-8").read()
+    assert "9-Week Demand Forecast" in html and "next 9 weeks" in html and "9-week horizon" in html
+    assert "12-Week Demand Forecast" not in html     # demo default must not survive
+    assert "next 12 weeks" not in html and "12-week horizon" not in html
+
+
 def test_missing_required_column_blocks(tmp_path):
     p = tmp_path / "bad.csv"
     p.write_text("store_id,sku,week_ending\nS0,A,2025-01-01\n", encoding="utf-8")
