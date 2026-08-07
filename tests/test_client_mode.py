@@ -72,15 +72,16 @@ def test_clean_run_forecasts_flat_demand(tmp_path):
     assert "2025-11-01" in html and "12-week" in html.lower() or "12 weeks" in html.lower()
 
 
-def test_horizon_label_tracks_config_not_hardcoded(tmp_path):
-    """The rendered horizon ('N-Week Demand Forecast', 'next N weeks', 'N-week
-    horizon') must come from basis.horizon_weeks, not a hardcoded 12. The clean
-    run asserts only the demo's own '12-week' — a positive-only check a hardcoded
-    12 would also pass, the gap that let trade-spend quote 26 weeks of data as
-    'trailing 52 weeks'.
+def test_horizon_label_and_forecast_length_track_config_together(tmp_path):
+    """basis.horizon_weeks drives BOTH the rendered horizon label AND the length
+    of the forecast it captions. This asserts they move together: a caption that
+    tracks config while the math uses a hardcoded 12 (or vice versa) is the
+    caption-vs-math divergence class (ENGAGEMENT-READY-CHECKLIST). The clean run
+    pins the number at the demo's 12 and the label at 12 in separate tests; here
+    a distinctive horizon must move both in one run.
 
-    Both halves: feed a distinctive horizon and assert it tracks, AND assert the
-    demo default is absent."""
+    Both halves: feed a distinctive horizon and assert the label AND the derived
+    forecast reflect it, AND assert the demo default is absent from each."""
     p = tmp_path / "engagement.yml"
     p.write_text(_CONFIG.replace("horizon_weeks: 12", "horizon_weeks: 9")
                         .replace('window_label: "12-week horizon"', 'window_label: "9-week horizon"'),
@@ -88,10 +89,19 @@ def test_horizon_label_tracks_config_not_hardcoded(tmp_path):
     src = _demand_csv(tmp_path / "d.csv")
     result = client_mode.run(str(p), src, str(tmp_path / "out"))
     assert result["status"] == "ok"
+
+    # Caption tracks 9, not 12.
     html = open(result["report"], encoding="utf-8").read()
     assert "9-Week Demand Forecast" in html and "next 9 weeks" in html and "9-week horizon" in html
-    assert "12-Week Demand Forecast" not in html     # demo default must not survive
+    assert "12-Week Demand Forecast" not in html
     assert "next 12 weeks" not in html and "12-week horizon" not in html
+
+    # Math tracks 9 too: 12 u/store/wk x 6 stores x 9 wks = 648, strictly fewer
+    # than the demo's 12-week 864 — the derived number moved with the caption.
+    s = json.load(open(result["summary_json"], encoding="utf-8"))
+    by = {r["sku"]: r["forecast_units"] for r in s["by_sku"]}
+    assert by["MF-001"] == pytest.approx(648.0, abs=50)
+    assert by["MF-001"] < 864.0 - 50
 
 
 def test_missing_required_column_blocks(tmp_path):
