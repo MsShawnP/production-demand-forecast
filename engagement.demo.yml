@@ -1,0 +1,20 @@
+# Lailara LLC — Engagement config (DEMO). Canonical demo identity; demo: true so
+# the deploy guard ignores it. A real client run uses engagement.yml with the
+# client's own sell-through history.
+client:
+  name: "Cinderhaven Provisions (demo)"
+engagement:
+  id: "CINDERHAVEN-DEMO"
+# Forecast-from anchor = the demo as-of (never the wall clock). The forecast
+# projects forward from this date.
+as_of_date: "2025-11-01"
+prepared_by: "Lailara LLC"
+demo: true
+basis:
+  horizon_weeks: 12
+  window_label: "12-week horizon"
+columns:
+  store_id: "store_id"
+  sku: "sku"
+  week_ending: "week_ending"
+  true_demand: "true_demand"
