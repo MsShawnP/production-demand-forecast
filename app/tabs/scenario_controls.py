@@ -168,6 +168,7 @@ def layout() -> html.Div:
             "lead times, minimum order quantities. The baseline plan assumes "
             "current demand and current constraints. Move the sliders to see how "
             "fast the plan breaks when they shift.",
+            className="ll-column",
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "8px"},
         ),
         html.P(

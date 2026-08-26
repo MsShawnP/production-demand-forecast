@@ -52,6 +52,7 @@ def layout() -> html.Div:
         ),
         html.P(
             "Why forecasts built on stockout-corrupted data guarantee the next stockout.",
+            className="ll-column",
             style={"fontFamily": FONT_SANS, "fontSize": "14px",
                    "color": TEXT_SEC, "marginBottom": "16px"},
         ),
@@ -165,7 +166,7 @@ def register_callbacks(app) -> None:
                 "fontFamily": FONT_SERIF, "fontWeight": "700",
                 "fontSize": "22px", "marginBottom": "4px", "color": INK,
             }),
-            html.P(subtitle, style={
+            html.P(subtitle, className="ll-column", style={
                 "fontSize": "14px", "color": TEXT_SEC, "marginBottom": "20px",
             }),
             chart,
@@ -313,7 +314,8 @@ def _build_topline(hidden_units, hidden_dollars, wholesale, name,
         }),
         html.P(basis, style={
             "fontFamily": FONT_SANS, "fontSize": "14px",
-            "color": TEXT_SEC, "margin": "6px 0 0 0", "maxWidth": "720px",
+            "color": TEXT_SEC, "margin": "6px 0 0 0",
+            "maxWidth": "var(--ll-content-measure)",
         }),
     ], style={"margin": "8px 0 28px 0"})
 
@@ -378,4 +380,7 @@ def _prose_style() -> dict:
         "lineHeight": "1.6",
         "color": TEXT,
         "marginBottom": "16px",
+        # Shared column edge — every narrative block wraps at the same measure
+        # as the heading above it (LAILARA_DESIGN_SYSTEM.md § Measure alignment).
+        "maxWidth": "var(--ll-content-measure)",
     }

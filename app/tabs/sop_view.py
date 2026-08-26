@@ -97,6 +97,7 @@ def layout() -> html.Div:
         ),
         html.P(
             "Which SKUs stock out, when, and when is the last date to act.",
+            className="ll-column",
             style={"fontSize": "14px", "color": TEXT_SEC, "marginBottom": "8px"},
         ),
         html.P(
@@ -210,6 +211,7 @@ def register_callbacks(app) -> None:
                 "production problem with a planning problem. Every SKU below "
                 "depends on a co-packer with shared lines, fixed minimums, and "
                 "lead times that punish late decisions.",
+                className="ll-column",
                 style={"fontFamily": FONT_SANS, "fontSize": "15px",
                        "lineHeight": "1.6", "color": TEXT_SEC,
                        "marginBottom": "12px"},
@@ -221,6 +223,7 @@ def register_callbacks(app) -> None:
                 f"share a co-packer production line. You cannot run them all at once: "
                 f"scheduling one pushes the others back. The table is sorted by "
                 f"urgency. Negative days mean the deadline has passed.",
+                className="ll-column",
                 style={"fontFamily": FONT_SANS, "fontSize": "15px",
                        "lineHeight": "1.6", "color": TEXT_SEC},
             ),
