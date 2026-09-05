@@ -32,6 +32,36 @@ app = Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
     title="Co-Packer Production Planner — Cinderhaven",
+    meta_tags=[
+        {"property": "og:title", "content": "Co-Packer Production Planner"},
+        {
+            "property": "og:description",
+            "content": (
+                "Demand signals, capacity constraints, and seasonality in one "
+                "S&OP model: what the next launch does to existing commitments."
+            ),
+        },
+        {"property": "og:type", "content": "website"},
+        {"property": "og:url", "content": "https://forecast.lailarallc.com/"},
+        {"property": "og:image", "content": "https://lailarallc.com/og/s/forecast.png"},
+        {
+            "property": "og:image:secure_url",
+            "content": "https://lailarallc.com/og/s/forecast.png",
+        },
+        {"property": "og:image:type", "content": "image/png"},
+        {"property": "og:image:width", "content": "1200"},
+        {"property": "og:image:height", "content": "630"},
+        {"property": "og:image:alt", "content": "Co-Packer Production Planner"},
+        {"name": "twitter:card", "content": "summary_large_image"},
+        {"name": "twitter:image", "content": "https://lailarallc.com/og/s/forecast.png"},
+        {
+            "name": "description",
+            "content": (
+                "Demand signals, capacity constraints, and seasonality in one "
+                "S&OP model: what the next launch does to existing commitments."
+            ),
+        },
+    ],
 )
 server = app.server
 _secret_key = os.environ.get("FLASK_SECRET_KEY")
